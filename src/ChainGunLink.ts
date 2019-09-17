@@ -61,7 +61,13 @@ export class ChainGunLink {
    * @returns same chain context
    */
   put(value: GunValue, cb?: GunPutCb) {
-    throw new Error("put() isn't supported yet")
+    if (!this._parent) {
+      this._chain.graph.put({
+        [this.key]: value as GunNode
+      })
+      return this
+    }
+    throw new Error("deep put() isn't supported yet")
     return this
   }
 

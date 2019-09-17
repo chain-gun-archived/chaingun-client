@@ -14,3 +14,11 @@ export function mergeGunNodes(existing: GunNode | undefined, updates: GunNode | 
     }
   }
 }
+
+export function mergeGraph(existing: GunGraphData, diff: GunGraphData) {
+  const result: GunGraphData = { ...existing }
+  for (let soul in diff) {
+    result[soul] = mergeGunNodes(existing[soul], diff[soul])
+  }
+  return result
+}

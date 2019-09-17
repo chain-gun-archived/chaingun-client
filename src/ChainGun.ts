@@ -20,7 +20,7 @@ export class ChainGun {
     } else {
       this.graph = new GunGraph()
       this.graph.use(diffGunCRDT)
-      this.graph.use(addMissingState, 'write')
+      this.graph.use(diffGunCRDT, 'write')
     }
     this._opt = {}
     if (opt) this.opt(opt)

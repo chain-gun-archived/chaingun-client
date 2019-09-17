@@ -2,6 +2,8 @@ import { GunEvent } from './GunEvent'
 import { mergeGunNodes } from './mergeGunNodes'
 import { diffSets } from './diffSets'
 import { GunGraphConnector } from './GunGraphConnector'
+import { flattenGraphData } from './flattenGraphData'
+import { addMissingState } from './addMissingState'
 
 interface GunGraphOptions {}
 
@@ -133,6 +135,28 @@ export class GunGraph {
     return () => {
       lastSouls.forEach(soul => this._unlisten(soul, updateQuery))
     }
+  }
+
+  /**
+   * Write node data
+   *
+   * @param data one or more gun nodes keyed by soul
+   */
+  async put(data: GunGraphData) {
+    let diff: GunGraphData | undefined = flattenGraphData(addMissingState(data))
+
+    for (let i = 0; i < this._writeMiddleware.length; i++) {
+      if (!diff) return
+      diff = await this._writeMiddleware[i](diff, this._graph)
+    }
+
+    if (!diff) return
+
+    for (let i = 0; i < this._connectors.length; i++) {
+      this._connectors[i].put(diff)
+    }
+
+    this.receiveNodeData(diff)
   }
 
   private _forget(soul: string) {

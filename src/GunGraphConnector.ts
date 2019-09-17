@@ -7,5 +7,7 @@ export class GunGraphConnector {
     this.graphData = new GunEvent(`${this.constructor}.graphData`)
   }
 
+  put(data: GunGraphData) {}
+
   request(souls: string[]) {}
 }

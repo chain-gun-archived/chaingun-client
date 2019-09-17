@@ -38,7 +38,7 @@ export function diffGunCRDT(
 
     const updates: GunNode = {
       _: {
-        '#': updated._['#'],
+        '#': soul,
         '>': {} as GunNodeState
       }
     }

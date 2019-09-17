@@ -47,6 +47,16 @@ export class WebSocketGraphConnector extends GunGraphConnector {
     }
   }
 
+  put(data: GunGraphData) {
+    const msgId = generateMessageId()
+    this._ws.send(
+      JSON.stringify({
+        '#': msgId,
+        put: data
+      })
+    )
+  }
+
   receiveMessage(msg: GunMsg) {
     if (!msg) return
     if (!('put' in msg)) return
