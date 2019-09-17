@@ -90,7 +90,7 @@ export class ChainGunLink {
    * @returns same chain context
    */
   not(cb: (key: string) => void) {
-    this.on(val => !val && cb(this.key))
+    this.on(val => typeof val === 'undefined' && cb(this.key))
     return this
   }
 

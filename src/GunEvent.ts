@@ -18,6 +18,7 @@ export class GunEvent<T = any, U = any, V = any> {
   }
 
   on(cb: EventCb<T, U, V>) {
+    if (this._listeners.indexOf(cb) !== -1) return
     this._listeners.push(cb)
   }
 

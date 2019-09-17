@@ -90,12 +90,13 @@ export class ChainGun {
     for (let i = 0; i < souls.length; i++) {
       const soul = souls[i]
       const listener = this._listeners[soul]
-      const node = (this._graph[soul] = mergeGunNodes(this._graph[soul], diff[soul]))
 
       if (!listener) {
-        //this._forget(soul);
+        this._forget(soul)
         continue
       }
+
+      const node = (this._graph[soul] = mergeGunNodes(this._graph[soul], diff[soul]))
 
       listener.trigger(node, soul)
     }
@@ -122,7 +123,9 @@ export class ChainGun {
     }
 
     updateQuery()
-    return () => lastSouls.forEach(soul => this._unlisten(soul, updateQuery))
+    return () => {
+      lastSouls.forEach(soul => this._unlisten(soul, updateQuery))
+    }
   }
 
   private _request(soul: string, cb: GunNodeListenCb) {
@@ -195,8 +198,11 @@ export class ChainGun {
   }
 
   private _forget(soul: string) {
-    // delete this._listeners[soul];
-    // delete this._graph[soul];
+    if (this._listeners[soul]) {
+      this._listeners[soul].reset()
+      delete this._listeners[soul]
+    }
+    delete this._graph[soul]
     return this
   }
 }
