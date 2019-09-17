@@ -10,7 +10,7 @@ interface GunNode {
   [key: string]: any
 }
 
-interface GunGraph {
+interface GunGraphData {
   [key: string]: GunNode | undefined
 }
 
@@ -42,7 +42,7 @@ interface PathData {
 }
 
 type ChainGunMiddleware = (
-  updates: GunGraph,
-  existingGraph: GunGraph
-) => Promise<GunGraph | undefined>
+  updates: GunGraphData,
+  existingGraph: GunGraphData
+) => GunGraphData | undefined | Promise<GunGraphData | undefined>
 type ChainGunMiddlewareType = 'read' | 'write'

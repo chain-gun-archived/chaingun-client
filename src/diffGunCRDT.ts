@@ -6,8 +6,8 @@ const DEFAULT_OPTS = {
 const EMPTY = {}
 
 export function diffGunCRDT(
-  existingGraph: GunGraph,
-  updatedGraph: GunGraph,
+  updatedGraph: GunGraphData,
+  existingGraph: GunGraphData,
   opts: {
     machineState?: number
     futureGrace?: number
@@ -21,7 +21,7 @@ export function diffGunCRDT(
   } = opts || EMPTY
   const maxState = machineState + futureGrace // eslint-disable-line
 
-  const allUpdates: GunGraph = {}
+  const allUpdates: GunGraphData = {}
 
   for (let soul in updatedGraph) {
     const existing = existingGraph[soul]

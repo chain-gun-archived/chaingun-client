@@ -90,7 +90,7 @@ export class ChainGunLink {
    * @returns same chain context
    */
   not(cb: (key: string) => void) {
-    this.on(val => typeof val === 'undefined' && cb(this.key))
+    this.promise().then(val => typeof val === 'undefined' && cb(this.key))
     return this
   }
 
@@ -129,7 +129,7 @@ export class ChainGunLink {
   on(cb: GunOnCb) {
     this._updateEvent.on(cb)
     if (!this._endQuery) {
-      this._endQuery = this._chain.query(this.getPath(), this._onQueryResponse.bind(this))
+      this._endQuery = this._chain.graph.query(this.getPath(), this._onQueryResponse.bind(this))
     }
     if (this._hasReceived) cb(this._lastValue, this.key)
     return this
