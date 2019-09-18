@@ -8,6 +8,7 @@ import { addMissingState } from './addMissingState'
 interface GunGraphOptions {}
 
 export class GunGraph {
+  graphData: GunEvent<GunGraphData>
   private _opt: GunGraphOptions
   private _connectors: GunGraphConnector[]
   private _readMiddleware: ChainGunMiddleware[]
@@ -18,6 +19,7 @@ export class GunGraph {
   }
 
   constructor() {
+    this.graphData = new GunEvent('graph data')
     this.receiveNodeData = this.receiveNodeData.bind(this)
     this._opt = {}
     this._graph = {}
@@ -143,7 +145,7 @@ export class GunGraph {
       diff = await this._readMiddleware[i](diff, this._graph)
     }
 
-    if (!diff) return
+    if (!diff || !Object.keys(diff)) return
 
     const souls = Object.keys(diff)
     for (let i = 0; i < souls.length; i++) {
@@ -159,6 +161,8 @@ export class GunGraph {
 
       listener.trigger(node, soul)
     }
+
+    this.graphData.trigger(diff)
   }
 
   private _forget(soul: string) {

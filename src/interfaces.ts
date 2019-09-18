@@ -22,9 +22,7 @@ interface GunMsg {
     '#': string
   }
 
-  put?: {
-    [soul: string]: GunNode
-  }
+  put?: GunGraphData
 }
 
 type GunValue = object | string | number | boolean | null

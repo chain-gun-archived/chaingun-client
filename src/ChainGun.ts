@@ -7,6 +7,7 @@ import { WebSocketGraphConnector } from './@notabug/chaingun'
 interface ChainGunOptions {
   peers?: string[]
   graph?: GunGraph
+  WS?: typeof WebSocket
 }
 
 export class ChainGun {
@@ -32,7 +33,9 @@ export class ChainGun {
     this._opt = { ...this._opt, ...options }
 
     if (options.peers) {
-      options.peers.forEach(peer => this.graph.connect(new WebSocketGraphConnector(peer)))
+      options.peers.forEach(peer =>
+        this.graph.connect(new WebSocketGraphConnector(peer, this._opt.WS))
+      )
     }
 
     return this

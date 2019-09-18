@@ -6,23 +6,46 @@ const PING = 60000
 
 export class WebSocketGraphConnector extends GunGraphConnector {
   url: string
+  isConnected: boolean
+
+  events: {
+    msgIn: GunEvent<GunMsg, string>
+    msgOut: GunEvent<GunMsg, string>
+    connected: GunEvent
+    disconnected: GunEvent
+  }
+
   private _ws: WebSocket
   private _requests: { [msgId: string]: string }
   private _requestsBySoul: { [soul: string]: string }
   private _puts: { [msgId: string]: GunEvent }
+  private _queuedMessages: GunMsg[]
 
   constructor(url: string, WS = WebSocket) {
     super()
+    this._queuedMessages = []
+    this.events = {
+      connected: new GunEvent(`connected ${url}`),
+      disconnected: new GunEvent(`disconnected ${url}`),
+      msgIn: new GunEvent(`msgIn ${url}`),
+      msgOut: new GunEvent(`msgOn ${url}`)
+    }
+    this.isConnected = false
     this.url = url
     this._requests = {}
     this._requestsBySoul = {}
     this._puts = {}
     this._ws = new WS(this.url.replace(/^http/, 'ws'))
-    this._ws.addEventListener('message', this.receiveSocketData.bind(this))
+    this._ws.addEventListener('message', this._onReceiveSocketData.bind(this))
+    this._ws.addEventListener('open', this.onSocketConnect.bind(this))
   }
 
-  onSocketConnect(ws: WebSocket) {
-    setInterval(() => ws.send('[]'), PING)
+  private onSocketConnect() {
+    console.log('websocket connected')
+    this.isConnected = true
+    setInterval(() => this._ws.send('[]'), PING)
+    this._send(this._queuedMessages)
+    this._queuedMessages = []
   }
 
   request(souls: string[]) {
@@ -43,31 +66,43 @@ export class WebSocketGraphConnector extends GunGraphConnector {
       })
     }
 
-    if (msgs.length === 1) {
-      this._ws.send(JSON.stringify(msgs[0]))
-    } else if (msgs.length > 0) {
-      this._ws.send(JSON.stringify(msgs))
-    }
+    this._send(msgs)
   }
 
   put(data: GunGraphData, ackEvt?: GunEvent) {
     const msgId = generateMessageId()
     if (ackEvt) this._puts[msgId] = ackEvt
 
-    this._ws.send(
-      JSON.stringify({
+    this._send([
+      {
         '#': msgId,
         put: data
-      })
-    )
+      }
+    ])
   }
 
-  receiveMessage(msg: GunMsg) {
+  private _send(msgs: GunMsg[]) {
+    if (!this.isConnected) {
+      this._queuedMessages.splice(0, 0, ...msgs)
+      return
+    }
+
+    if (!msgs.length) return
+    if (msgs.length === 1) {
+      this._ws.send(JSON.stringify(msgs[0]))
+    } else if (msgs.length > 0) {
+      this._ws.send(JSON.stringify(msgs))
+    }
+
+    msgs.forEach(msg => this.events.msgOut.trigger(msg, this.url))
+  }
+
+  private _onReceiveMessage(msg: GunMsg) {
     if (!msg) return
+    this.events.msgIn.trigger(msg, this.url)
     const respondingTo = msg['@']
     const putEvt = respondingTo && this._puts[respondingTo]
     if (putEvt) {
-      console.log('msg', msg)
       putEvt.trigger(msg)
       return
     }
@@ -83,13 +118,13 @@ export class WebSocketGraphConnector extends GunGraphConnector {
     }
   }
 
-  receiveSocketData(msg: any) {
+  private _onReceiveSocketData(msg: any) {
     const raw = msg.data || msg
     const json = JSON.parse(raw)
     if (Array.isArray(json)) {
-      json.forEach(this.receiveMessage.bind(this))
+      json.forEach(this._onReceiveMessage.bind(this))
     } else {
-      this.receiveMessage(json)
+      this._onReceiveMessage(json)
     }
   }
 }
