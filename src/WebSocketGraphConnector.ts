@@ -1,6 +1,7 @@
 import { GunGraphConnector } from './GunGraphConnector'
 import { generateMessageId } from './generateMessageId'
 import { GunEvent } from './GunEvent'
+import ReconnectingWS from 'reconnecting-websocket'
 
 const PING = 60000
 
@@ -11,10 +12,10 @@ export class WebSocketGraphConnector extends GunGraphConnector {
   events: {
     msgIn: GunEvent<GunMsg, string>
     msgOut: GunEvent<GunMsg, string>
-    connected: GunEvent
-    disconnected: GunEvent
+    connection: GunEvent<boolean>
   }
 
+  private _pingInterval?: NodeJS.Timeout
   private _ws: WebSocket
   private _requests: { [msgId: string]: string }
   private _requestsBySoul: { [soul: string]: string }
@@ -25,8 +26,7 @@ export class WebSocketGraphConnector extends GunGraphConnector {
     super()
     this._queuedMessages = []
     this.events = {
-      connected: new GunEvent(`connected ${url}`),
-      disconnected: new GunEvent(`disconnected ${url}`),
+      connection: new GunEvent(`WS connection ${url}`),
       msgIn: new GunEvent(`msgIn ${url}`),
       msgOut: new GunEvent(`msgOn ${url}`)
     }
@@ -35,17 +35,12 @@ export class WebSocketGraphConnector extends GunGraphConnector {
     this._requests = {}
     this._requestsBySoul = {}
     this._puts = {}
-    this._ws = new WS(this.url.replace(/^http/, 'ws'))
+    this._ws = (new ReconnectingWS(this.url.replace(/^http/, 'ws'), [], {
+      WebSocket: WS
+    }) as unknown) as WebSocket
     this._ws.addEventListener('message', this._onReceiveSocketData.bind(this))
     this._ws.addEventListener('open', this.onSocketConnect.bind(this))
-  }
-
-  private onSocketConnect() {
-    console.log('websocket connected')
-    this.isConnected = true
-    setInterval(() => this._ws.send('[]'), PING)
-    this._send(this._queuedMessages)
-    this._queuedMessages = []
+    this._ws.addEventListener('close', this.onSocketDisconnect.bind(this))
   }
 
   request(souls: string[]) {
@@ -79,6 +74,20 @@ export class WebSocketGraphConnector extends GunGraphConnector {
         put: data
       }
     ])
+  }
+
+  private onSocketConnect() {
+    this.isConnected = true
+    this._pingInterval = setInterval(() => this._ws.send('[]'), PING)
+    this._send(this._queuedMessages)
+    this._queuedMessages = []
+    this.events.connection.trigger(true)
+  }
+
+  private onSocketDisconnect() {
+    this.isConnected = false
+    if (this._pingInterval) clearInterval(this._pingInterval)
+    this.events.connection.trigger(false)
   }
 
   private _send(msgs: GunMsg[]) {

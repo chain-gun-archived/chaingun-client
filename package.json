@@ -1,6 +1,6 @@
 {
   "name": "@notabug/chaingun",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Reimplementation of gunDB chain logic in TypeScript",
   "keywords": [],
   "main": "dist/@notabug/chaingun.umd.js",
@@ -117,5 +117,7 @@
     "typedoc": "^0.15.0",
     "typescript": "^3.0.3"
   },
-  "dependencies": {}
+  "dependencies": {
+    "reconnecting-websocket": "^4.2.0"
+  }
 }
