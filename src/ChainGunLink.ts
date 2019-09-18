@@ -4,6 +4,7 @@ import { GunEvent } from './GunEvent'
 export class ChainGunLink {
   /* last key in chain */
   key: string
+  soul?: string
 
   private _updateEvent: GunEvent<GunValue, string>
   private _chain: ChainGun
@@ -14,6 +15,7 @@ export class ChainGunLink {
 
   constructor(chain: ChainGun, key: string, parent?: ChainGunLink) {
     this.key = key
+    if (!parent) this.soul = key
     this._chain = chain
     this._parent = parent
     this._hasReceived = false
@@ -62,9 +64,12 @@ export class ChainGunLink {
    */
   put(value: GunValue, cb?: GunPutCb) {
     if (!this._parent) {
-      this._chain.graph.put({
-        [this.key]: value as GunNode
-      })
+      this._chain.graph.put(
+        {
+          [this.key]: value as GunNode
+        },
+        cb
+      )
       return this
     }
     throw new Error("deep put() isn't supported yet")
@@ -82,8 +87,20 @@ export class ChainGunLink {
    * @param cb The callback is invoked exactly the same as .put
    * @returns chain context for added object
    */
-  set(data: object, cb?: GunPutCb) {
-    throw new Error("set() isn't supported yet")
+  set(data: any, cb?: GunPutCb) {
+    if (data instanceof ChainGunLink && data.soul) {
+      this.put({
+        [data.soul]: {
+          '#': data.soul
+        }
+      })
+    } else if (data && data._ && data._['#']) {
+      this.put({
+        [data && data._ && data._['#']]: data
+      })
+    } else {
+      throw new Error('set() is only partially supported')
+    }
   }
 
   /**

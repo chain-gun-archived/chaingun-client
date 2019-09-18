@@ -1,5 +1,6 @@
 import { GunGraphConnector } from './GunGraphConnector'
 import { generateMessageId } from './generateMessageId'
+import { GunEvent } from './GunEvent'
 
 const PING = 60000
 
@@ -8,12 +9,14 @@ export class WebSocketGraphConnector extends GunGraphConnector {
   private _ws: WebSocket
   private _requests: { [msgId: string]: string }
   private _requestsBySoul: { [soul: string]: string }
+  private _puts: { [msgId: string]: GunEvent }
 
   constructor(url: string, WS = WebSocket) {
     super()
     this.url = url
     this._requests = {}
     this._requestsBySoul = {}
+    this._puts = {}
     this._ws = new WS(this.url.replace(/^http/, 'ws'))
     this._ws.addEventListener('message', this.receiveSocketData.bind(this))
   }
@@ -47,8 +50,10 @@ export class WebSocketGraphConnector extends GunGraphConnector {
     }
   }
 
-  put(data: GunGraphData) {
+  put(data: GunGraphData, ackEvt?: GunEvent) {
     const msgId = generateMessageId()
+    if (ackEvt) this._puts[msgId] = ackEvt
+
     this._ws.send(
       JSON.stringify({
         '#': msgId,
@@ -59,8 +64,14 @@ export class WebSocketGraphConnector extends GunGraphConnector {
 
   receiveMessage(msg: GunMsg) {
     if (!msg) return
-    if (!('put' in msg)) return
     const respondingTo = msg['@']
+    const putEvt = respondingTo && this._puts[respondingTo]
+    if (putEvt) {
+      console.log('msg', msg)
+      putEvt.trigger(msg)
+      return
+    }
+    if (!('put' in msg)) return
     const requestedSoul = respondingTo && this._requests[respondingTo]
 
     if (msg.put) {

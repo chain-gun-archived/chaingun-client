@@ -79,38 +79,6 @@ export class GunGraph {
     return this
   }
 
-  /**
-   * Update node data in this chain from some local or external source
-   *
-   * @param soul soul of node to update
-   * @param data node data to include
-   */
-  private async receiveNodeData(data?: GunGraphData) {
-    let diff = data
-
-    for (let i = 0; i < this._readMiddleware.length; i++) {
-      if (!diff) return
-      diff = await this._readMiddleware[i](diff, this._graph)
-    }
-
-    if (!diff) return
-
-    const souls = Object.keys(diff)
-    for (let i = 0; i < souls.length; i++) {
-      const soul = souls[i]
-      const listener = this._listeners[soul]
-
-      if (!listener) {
-        this._forget(soul)
-        continue
-      }
-
-      const node = (this._graph[soul] = mergeGunNodes(this._graph[soul], diff[soul]))
-
-      listener.trigger(node, soul)
-    }
-  }
-
   query(path: string[], cb: GunOnCb) {
     let lastSouls = [] as string[]
     let currentValue: GunValue | undefined
@@ -142,8 +110,10 @@ export class GunGraph {
    *
    * @param data one or more gun nodes keyed by soul
    */
-  async put(data: GunGraphData) {
+  async put(data: GunGraphData, cb?: GunPutCb) {
     let diff: GunGraphData | undefined = flattenGraphData(addMissingState(data))
+    const evt = cb ? new GunEvent('put') : undefined
+    if (evt && cb) evt.on(cb)
 
     for (let i = 0; i < this._writeMiddleware.length; i++) {
       if (!diff) return
@@ -153,10 +123,42 @@ export class GunGraph {
     if (!diff) return
 
     for (let i = 0; i < this._connectors.length; i++) {
-      this._connectors[i].put(diff)
+      this._connectors[i].put(diff, evt)
     }
 
     this.receiveNodeData(diff)
+  }
+
+  /**
+   * Update node data in this chain from some local or external source
+   *
+   * @param soul soul of node to update
+   * @param data node data to include
+   */
+  private async receiveNodeData(data?: GunGraphData) {
+    let diff = data
+
+    for (let i = 0; i < this._readMiddleware.length; i++) {
+      if (!diff) return
+      diff = await this._readMiddleware[i](diff, this._graph)
+    }
+
+    if (!diff) return
+
+    const souls = Object.keys(diff)
+    for (let i = 0; i < souls.length; i++) {
+      const soul = souls[i]
+      const listener = this._listeners[soul]
+
+      if (!listener) {
+        this._forget(soul)
+        continue
+      }
+
+      const node = (this._graph[soul] = mergeGunNodes(this._graph[soul], diff[soul]))
+
+      listener.trigger(node, soul)
+    }
   }
 
   private _forget(soul: string) {
