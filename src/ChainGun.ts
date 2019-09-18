@@ -1,7 +1,6 @@
 import { ChainGunLink } from './ChainGunLink'
 import { diffGunCRDT } from './diffGunCRDT'
 import { GunGraph } from './GunGraph'
-import { addMissingState } from './addMissingState'
 import { WebSocketGraphConnector } from './@notabug/chaingun'
 
 interface ChainGunOptions {
@@ -50,15 +49,5 @@ export class ChainGun {
    */
   get(soul: string, cb?: GunPutCb): ChainGunLink {
     return new this.LinkClass(this, soul)
-  }
-
-  /**
-   * Write node data
-   *
-   * @param data one or more gun nodes keyed by soul
-   */
-  put(data: { [soul: string]: GunNode }) {
-    throw new Error("put() isn't supported yet")
-    return this
   }
 }

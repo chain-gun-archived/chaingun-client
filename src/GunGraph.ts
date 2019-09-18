@@ -107,6 +107,47 @@ export class GunGraph {
     }
   }
 
+  putPath(path: string[], data: GunValue, cb?: GunPutCb) {
+    if (path.length === 1) {
+      if (data && typeof data === 'object') {
+        this.put({
+          [path[0]]: data as GunNode
+        })
+      }
+      return
+    }
+    const lastKey = path[path.length - 1]
+    const parentPath = path.slice(0, path.length - 1)
+
+    let lastSouls = [] as string[]
+
+    const updateQuery = () => {
+      const { souls, complete } = this._getPathData(path)
+      const [added, removed] = diffSets(lastSouls, souls)
+
+      if (complete) {
+        if (souls.length === parentPath.length) {
+          const lastSoul = souls[souls.length - 1]
+          console.log('deep put', { lastSoul, lastKey, data, path })
+          this.putPath([lastSoul], { [lastKey]: data }, cb)
+        } else {
+          throw new Error('Deep puts only partially supported')
+        }
+        lastSouls.forEach(soul => this._unlisten(soul, updateQuery))
+      } else {
+        added.forEach(soul => this._request(soul, updateQuery))
+        removed.forEach(soul => this._unlisten(soul, updateQuery))
+      }
+
+      lastSouls = souls
+    }
+
+    updateQuery()
+    return () => {
+      lastSouls.forEach(soul => this._unlisten(soul, updateQuery))
+    }
+  }
+
   /**
    * Write node data
    *
