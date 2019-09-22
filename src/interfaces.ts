@@ -23,14 +23,16 @@ interface GunMsg {
   }
 
   put?: GunGraphData
+
+  ack?: number | boolean
+  err?: any
 }
 
 type GunValue = object | string | number | boolean | null
-type ChainGunOptions = any
 type GunChainOptions = any
 type SendFn = (msg: GunMsg) => void
 type GunOnCb = (node: GunValue | undefined, key?: string) => void
-type GunPutCb = (res: { ack: number; err?: any }) => void
+type GunMsgCb = (msg: GunMsg) => void
 type GunNodeListenCb = (node: GunNode | undefined) => void
 
 interface PathData {

@@ -1,7 +1,7 @@
 import { ChainGunLink } from './ChainGunLink'
-import { diffGunCRDT } from './diffGunCRDT'
-import { GunGraph } from './GunGraph'
-import { WebSocketGraphConnector } from './@notabug/chaingun'
+import { diffGunCRDT } from './Graph/GunGraphUtils'
+import { GunGraph } from './Graph/GunGraph'
+import { WebSocketGraphConnector } from './Transports/WebSocketGraphConnector'
 
 interface ChainGunOptions {
   peers?: string[]
@@ -9,6 +9,14 @@ interface ChainGunOptions {
   WS?: typeof WebSocket
 }
 
+/**
+ * Main entry point for ChainGun
+ *
+ * Usage:
+ *
+ *   const gun = new ChainGun({ peers: ["https://notabug.io/gun"]})
+ *   gun.get("nab/things/59382d2a08b7d7073415b5b6ae29dfe617690d74").on(thing => console.log(this))
+ */
 export class ChainGun {
   graph: GunGraph
   private LinkClass: typeof ChainGunLink
@@ -28,6 +36,11 @@ export class ChainGun {
     this.LinkClass = LinkClass
   }
 
+  /**
+   * Set ChainGun configuration options
+   *
+   * @param options
+   */
   opt(options: ChainGunOptions) {
     this._opt = { ...this._opt, ...options }
 
@@ -47,7 +60,7 @@ export class ChainGun {
    * @param cb
    * @returns New chain context corresponding to given key
    */
-  get(soul: string, cb?: GunPutCb): ChainGunLink {
+  get(soul: string, cb?: GunMsgCb): ChainGunLink {
     return new this.LinkClass(this, soul)
   }
 }

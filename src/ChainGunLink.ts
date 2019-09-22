@@ -1,5 +1,5 @@
 import { ChainGun } from './ChainGun'
-import { GunEvent } from './GunEvent'
+import { GunEvent } from './ControlFlow/GunEvent'
 
 export class ChainGunLink {
   /* last key in chain */
@@ -34,7 +34,7 @@ export class ChainGunLink {
    * @param cb
    * @returns New chain context corresponding to given key
    */
-  get(key: string, cb?: GunPutCb): ChainGunLink {
+  get(key: string, cb?: GunMsgCb): ChainGunLink {
     return new (<any>this.constructor)(this._chain, key, this)
   }
 
@@ -62,8 +62,8 @@ export class ChainGunLink {
    * @param cb an optional callback, invoked on each acknowledgment
    * @returns same chain context
    */
-  put(value: GunValue, cb?: GunPutCb) {
-    this._chain.graph.putPath(this.getPath(), value)
+  put(value: GunValue, cb?: GunMsgCb) {
+    this._chain.graph.putPath(this.getPath(), value, cb)
     return this
   }
 
@@ -78,17 +78,23 @@ export class ChainGunLink {
    * @param cb The callback is invoked exactly the same as .put
    * @returns chain context for added object
    */
-  set(data: any, cb?: GunPutCb) {
+  set(data: any, cb?: GunMsgCb) {
     if (data instanceof ChainGunLink && data.soul) {
-      this.put({
-        [data.soul]: {
-          '#': data.soul
-        }
-      })
+      this.put(
+        {
+          [data.soul]: {
+            '#': data.soul
+          }
+        },
+        cb
+      )
     } else if (data && data._ && data._['#']) {
-      this.put({
-        [data && data._ && data._['#']]: data
-      })
+      this.put(
+        {
+          [data && data._ && data._['#']]: data
+        },
+        cb
+      )
     } else {
       throw new Error('set() is only partially supported')
     }
@@ -161,19 +167,23 @@ export class ChainGunLink {
         this._endQuery()
       }
     } else {
-      if (this._endQuery) this._endQuery()
+      if (this._endQuery) {
+        this._endQuery()
+      }
       this._updateEvent.reset()
     }
     return this
   }
 
-  promise() {
+  promise(opts = { timeout: 0 }) {
     return new Promise<GunValue>(ok => {
       const cb = (val?: GunValue) => {
         ok(val)
         this.off(cb)
       }
       this.on(cb)
+
+      if (opts.timeout) setTimeout(() => ok(), opts.timeout)
     })
   }
 
