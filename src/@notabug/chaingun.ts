@@ -1,5 +1,6 @@
 export * from '../Graph/GunGraphUtils'
 export { ChainGun } from '../ChainGun'
+export { GunGraph } from '../Graph/GunGraph'
 export { ChainGunLink } from '../ChainGunLink'
 export { GunEvent } from '../ControlFlow/GunEvent'
 export { GunGraphConnector } from '../Transports/GunGraphConnector'

@@ -6,7 +6,7 @@ export abstract class GunGraphConnector {
   isConnected: boolean
 
   events: {
-    graphData: GunEvent<GunGraphData, string | undefined>
+    graphData: GunEvent<GunGraphData, string | undefined, string | undefined>
     receiveMessage: GunEvent<GunMsg>
     connection: GunEvent<boolean>
   }
@@ -29,6 +29,18 @@ export abstract class GunGraphConnector {
 
     this.__onConnectedChange = this.__onConnectedChange.bind(this)
     this.events.connection.on(this.__onConnectedChange)
+  }
+
+  waitForConnection() {
+    if (this.isConnected) return Promise.resolve()
+    return new Promise(ok => {
+      const onConnected = (connected?: boolean) => {
+        if (!connected) return
+        ok()
+        this.events.connection.on(onConnected)
+      }
+      this.events.connection.on(onConnected)
+    })
   }
 
   /**

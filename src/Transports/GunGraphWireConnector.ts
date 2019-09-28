@@ -37,6 +37,8 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
     if (msgId) msg['#'] = msgId
     if (replyTo) msg['@'] = replyTo
 
+    if (Object.keys(graph).length === 1) console.log('put', graph)
+
     return this.req(msg, cb)
   }
 
@@ -71,23 +73,44 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
    * @param cb
    */
   req(msg: GunMsg, cb?: GunMsgCb) {
+    const now = new Date().getTime()
+    let done: number
     const reqId = (msg['#'] = msg['#'] || generateMessageId())
-    if (cb) this._callbacks[reqId] = cb
+
+    const putKeys = msg && msg.put && Object.keys(msg.put)
+
+    const cbWrap = (resp: GunMsg) => {
+      if (!done) {
+        done = new Date().getTime()
+        const duration = done - now
+        if (duration > 500) {
+          console.log('slow req', duration, msg.put ? Object.keys(msg.put) : msg)
+        }
+      }
+      if (cb) return cb(resp)
+    }
+
+    if (cb) this._callbacks[reqId] = cbWrap
     this.send([msg])
-    return () => delete this._callbacks[reqId]
+    return () => {
+      delete this._callbacks[reqId]
+    }
   }
 
   private _onProcessedInput(msg?: GunMsg) {
     if (!msg) return
+    const id = msg['#']
     const replyTo = msg['@']
 
     if ('put' in msg) {
-      if (msg.put) this.events.graphData.trigger(msg.put, replyTo)
+      if (msg.put) this.events.graphData.trigger(msg.put, id, replyTo)
     }
 
     if (replyTo) {
       const cb = this._callbacks[replyTo]
       if (cb) cb(msg)
     }
+
+    this.events.receiveMessage.trigger(msg)
   }
 }

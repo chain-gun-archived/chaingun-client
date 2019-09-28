@@ -18,7 +18,8 @@ interface GunGraphOptions {}
  * Provides facilities for querying and writing to graph data from one or more sources
  */
 export class GunGraph {
-  graphData: GunEvent<GunGraphData, string | undefined>
+  id: string
+  graphData: GunEvent<GunGraphData, string | undefined, string | undefined>
   activeConnectors: number
 
   private _opt: GunGraphOptions
@@ -31,6 +32,7 @@ export class GunGraph {
   }
 
   constructor() {
+    this.id = generateMessageId()
     this._receiveGraphData = this._receiveGraphData.bind(this)
     this.__onConnectorStatus = this.__onConnectorStatus.bind(this)
     this.activeConnectors = 0
@@ -270,7 +272,7 @@ export class GunGraph {
    *
    * @param data node data to include
    */
-  private async _receiveGraphData(data?: GunGraphData, replyToId?: string) {
+  private async _receiveGraphData(data?: GunGraphData, id?: string, replyToId?: string) {
     let diff = data
 
     for (let i = 0; i < this._readMiddleware.length; i++) {
@@ -278,9 +280,10 @@ export class GunGraph {
       diff = await this._readMiddleware[i](diff, this._graph)
     }
 
-    if (!diff || !Object.keys(diff)) return
+    if (!diff) return
 
     const souls = Object.keys(diff)
+
     for (let i = 0; i < souls.length; i++) {
       const soul = souls[i]
       const node = this._nodes[soul]
@@ -295,7 +298,7 @@ export class GunGraph {
       if (node) node.receive(nodeData)
     }
 
-    this.graphData.trigger(diff, replyToId)
+    this.graphData.trigger(diff, id, replyToId)
   }
 
   private _node(soul: string) {
