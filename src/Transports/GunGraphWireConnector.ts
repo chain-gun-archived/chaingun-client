@@ -37,8 +37,6 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
     if (msgId) msg['#'] = msgId
     if (replyTo) msg['@'] = replyTo
 
-    if (Object.keys(graph).length === 1) console.log('put', graph)
-
     return this.req(msg, cb)
   }
 
@@ -76,8 +74,6 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
     const now = new Date().getTime()
     let done: number
     const reqId = (msg['#'] = msg['#'] || generateMessageId())
-
-    const putKeys = msg && msg.put && Object.keys(msg.put)
 
     const cbWrap = (resp: GunMsg) => {
       if (!done) {
