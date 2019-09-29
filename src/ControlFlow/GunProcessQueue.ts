@@ -4,11 +4,12 @@ import { GunEvent } from './GunEvent'
 
 export class GunProcessQueue<T = GunMsg, U = any, V = any> extends GunQueue<T> {
   middleware: MiddlewareSystem<T, U, V>
-
+  isProcessing: boolean
   completed: GunEvent<T>
 
   constructor(name = 'GunProcessQueue') {
     super(name)
+    this.isProcessing = false
     this.completed = new GunEvent<T>(`${name}._processed`)
     this.middleware = new MiddlewareSystem<T, U, V>(`${name}.middleware`)
   }
@@ -21,8 +22,15 @@ export class GunProcessQueue<T = GunMsg, U = any, V = any> extends GunQueue<T> {
   }
 
   async process() {
+    if (this.isProcessing) return
+    this.isProcessing = true
     while (this.count()) {
-      await this.processNext()
+      try {
+        await this.processNext()
+      } catch (e) {
+        console.error('Process Queue error', e.stack)
+      }
     }
+    this.isProcessing = false
   }
 }

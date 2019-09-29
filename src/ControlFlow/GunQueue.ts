@@ -12,6 +12,7 @@ export class GunQueue<T = GunMsg> {
   }
 
   enqueue(item: T) {
+    if (this._queue.indexOf(item) !== -1) return this
     this._queue.splice(0, 0, item)
     return this
   }
