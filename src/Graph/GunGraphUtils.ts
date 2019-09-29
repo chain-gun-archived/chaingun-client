@@ -105,10 +105,27 @@ export function diffSets(initial: string[], updated: string[]) {
   ]
 }
 
-export function mergeGunNodes(existing: GunNode | undefined, updates: GunNode | undefined) {
+export function mergeGunNodes(
+  existing: GunNode | undefined,
+  updates: GunNode | undefined,
+  mut: 'immutable' | 'mutable' = 'immutable'
+) {
   if (!existing) return updates
   if (!updates) return existing
   const existingMeta = existing._
+  const existingState = existingMeta['>']
+  const updatedMeta = updates._
+  const updatedState = updatedMeta['>']
+
+  if (mut === 'mutable') {
+    for (let key in updatedState) {
+      existing[key] = updates[key]
+      existingState[key] = updatedState[key]
+    }
+
+    return existing
+  }
+
   return {
     ...existing,
     ...updates,
@@ -122,10 +139,14 @@ export function mergeGunNodes(existing: GunNode | undefined, updates: GunNode | 
   }
 }
 
-export function mergeGraph(existing: GunGraphData, diff: GunGraphData) {
-  const result: GunGraphData = { ...existing }
+export function mergeGraph(
+  existing: GunGraphData,
+  diff: GunGraphData,
+  mut: 'immutable' | 'mutable' = 'immutable'
+) {
+  const result: GunGraphData = mut ? existing : { ...existing }
   for (let soul in diff) {
-    result[soul] = mergeGunNodes(existing[soul], diff[soul])
+    result[soul] = mergeGunNodes(existing[soul], diff[soul], mut)
   }
   return result
 }

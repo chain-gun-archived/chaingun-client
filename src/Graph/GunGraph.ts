@@ -10,7 +10,9 @@ import {
 } from './GunGraphUtils'
 import { GunGraphNode } from './GunGraphNode'
 
-interface GunGraphOptions {}
+interface GunGraphOptions {
+  mutable?: boolean
+}
 
 /**
  * High level management of a subset of the gun graph
@@ -248,9 +250,11 @@ export class GunGraph {
 
     const souls = Object.keys(diff)
 
+    /*
     for (let i = 0; i < souls.length; i++) {
       this._node(souls[i])
     }
+    */
 
     this._receiveGraphData(diff)
   }
@@ -293,7 +297,11 @@ export class GunGraph {
         continue
       }
 
-      const nodeData = (this._graph[soul] = mergeGunNodes(this._graph[soul], diff[soul]))
+      const nodeData = (this._graph[soul] = mergeGunNodes(
+        this._graph[soul],
+        diff[soul],
+        this._opt.mutable ? 'mutable' : 'immutable'
+      ))
 
       if (node) node.receive(nodeData)
     }
