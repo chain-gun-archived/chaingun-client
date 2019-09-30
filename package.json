@@ -1,6 +1,6 @@
 {
   "name": "@notabug/chaingun",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Reimplementation of gunDB chain logic in TypeScript",
   "keywords": [],
   "main": "dist/@notabug/chaingun.umd.js",

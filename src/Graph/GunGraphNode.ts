@@ -80,7 +80,7 @@ export class GunGraphNode {
   }
 
   private _onDirectQueryReply(msg: GunMsg) {
-    if ('put' in msg && !msg.put) {
+    if (!msg.put) {
       this._updateGraph(
         {
           [this.soul]: undefined

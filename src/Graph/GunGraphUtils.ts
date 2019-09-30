@@ -1,4 +1,4 @@
-import { GunGraphConnector } from '../@notabug/chaingun'
+import { GunGraphConnector, ChainGunLink } from '../@notabug/chaingun'
 
 const EMPTY = {}
 
@@ -112,12 +112,15 @@ export function mergeGunNodes(
 ) {
   if (!existing) return updates
   if (!updates) return existing
-  const existingMeta = existing._
-  const existingState = existingMeta['>']
-  const updatedMeta = updates._
-  const updatedState = updatedMeta['>']
+  const existingMeta = existing._ || {}
+  const existingState = existingMeta['>'] || {}
+  const updatedMeta = updates._ || {}
+  const updatedState = updatedMeta['>'] || {}
 
   if (mut === 'mutable') {
+    existingMeta['>'] = existingState
+    existing._ = existingMeta
+
     for (let key in updatedState) {
       existing[key] = updates[key]
       existingState[key] = updatedState[key]
@@ -160,7 +163,15 @@ export function nodeToGraph(node: GunNode) {
     if (key === '_') continue
     const val = node[key]
     if (typeof val !== 'object') continue
-    const soul = val && val._ && val._['#']
+
+    if (val.soul) {
+      const edge = { '#': val.soul }
+      modified[key] = edge
+
+      continue
+    }
+
+    const soul = val && (val._ && val._['#'])
 
     if (soul) {
       const edge = { '#': soul }
@@ -207,13 +218,13 @@ export function getPathData(keys: string[], graph: GunGraphData): PathData {
     }
   }
 
-  const { value: parentValue, souls } = getPathData(keys.slice(0, keys.length - 1), graph)
+  const { value: parentValue, souls, complete } = getPathData(keys.slice(0, keys.length - 1), graph)
 
   if (typeof parentValue !== 'object') {
     return {
       souls,
       value: undefined,
-      complete: typeof parentValue !== 'undefined'
+      complete: complete || typeof parentValue !== 'undefined'
     }
   }
 

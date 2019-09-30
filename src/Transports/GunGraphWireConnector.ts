@@ -75,6 +75,10 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
     let done: number
     const reqId = (msg['#'] = msg['#'] || generateMessageId())
 
+    const timeout = setTimeout(() => {
+      if (cb) console.log('slow req', msg)
+    }, 10000)
+
     const cbWrap = (resp: GunMsg) => {
       if (!done) {
         done = new Date().getTime()
@@ -83,11 +87,14 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
           console.log('slow req', duration, msg.put ? Object.keys(msg.put) : msg)
         }
       }
+      clearTimeout(timeout)
+
       if (cb) return cb(resp)
     }
 
     if (cb) this._callbacks[reqId] = cbWrap
     this.send([msg])
+
     return () => {
       delete this._callbacks[reqId]
     }
@@ -98,9 +105,7 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
     const id = msg['#']
     const replyTo = msg['@']
 
-    if ('put' in msg) {
-      if (msg.put) this.events.graphData.trigger(msg.put, id, replyTo)
-    }
+    if (msg.put) this.events.graphData.trigger(msg.put, id, replyTo)
 
     if (replyTo) {
       const cb = this._callbacks[replyTo]

@@ -29,7 +29,9 @@ interface GunMsg {
 }
 
 type GunValue = object | string | number | boolean | null
-type GunChainOptions = any
+type GunChainOptions = {
+  uuid?: (path: string[]) => Promise<string> | string
+}
 type SendFn = (msg: GunMsg) => void
 type GunOnCb = (node: GunValue | undefined, key?: string) => void
 type GunMsgCb = (msg: GunMsg) => void

@@ -40,10 +40,10 @@ export class WebSocketGraphConnector extends GunGraphWireConnector {
 
   private _onReceiveSocketData(msg: MessageEvent) {
     const raw = msg.data
-    const json = <GunMsg | GunMsg[]>JSON.parse(raw)
+    const json = <GunMsg | (GunMsg | string)[]>JSON.parse(raw)
 
     if (Array.isArray(json)) {
-      this.ingest(json)
+      this.ingest(json.map((x: any) => (typeof x === 'string' ? JSON.parse(x) : x)))
     } else {
       this.ingest([json])
     }

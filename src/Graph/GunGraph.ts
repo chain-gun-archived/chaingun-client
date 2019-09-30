@@ -168,59 +168,103 @@ export class GunGraph {
    * @param path The path to read
    * @param data The value to write
    * @param cb Callback function to be invoked for write acks
-   * @returns a cleanup function to after done with query
+   * @returns a promise
    */
-  putPath(path: string[], data: GunValue, cb?: GunMsgCb) {
-    if (path.length === 1) {
-      if (data && typeof data === 'object') {
-        this.put(
-          {
-            [path[0]]: data as GunNode
-          },
-          cb
-        )
-      }
-      return
-    }
-    const lastKey = path[path.length - 1]
-    const parentPath = path.slice(0, path.length - 1)
+  async putPath(
+    fullPath: string[],
+    data: GunValue,
+    cb?: GunMsgCb,
+    uuidFn?: (path: string[]) => Promise<string> | string
+  ) {
+    if (!fullPath.length) throw new Error('No path specified')
+    const souls = await this.getPathSouls(fullPath)
 
-    let lastSouls = [] as string[]
-
-    const end = () => {
-      for (let i = 0; i < lastSouls.length; i++) {
-        this._unlistenSoul(lastSouls[i], updateQuery)
-      }
-      lastSouls = []
+    if (souls.length === fullPath.length) {
+      return this.put(
+        {
+          [souls[souls.length - 1]]: data as GunNode
+        },
+        cb
+      )
     }
 
-    const updateQuery = () => {
-      const { souls, complete } = getPathData(path, this._graph)
-      const [added, removed] = diffSets(lastSouls, souls)
+    const existing = fullPath.slice(0, souls.length)
+    const remaining = fullPath.slice(souls.length)
+    let previousSoul = souls[souls.length - 1]
+    const graph: GunGraphData = {}
 
-      if (complete) {
-        if (souls.length === parentPath.length) {
-          const lastSoul = souls[souls.length - 1]
-          this.putPath([lastSoul], { [lastKey]: data }, cb)
-        } else {
-          throw new Error('Deep puts only partially supported')
-        }
-        end()
+    for (let i = 0; i < remaining.length; i++) {
+      const now = new Date().getTime()
+      const key = remaining[i]
+      let chainVal: GunValue
+      let soul = ''
+
+      if (i === remaining.length - 1) {
+        chainVal = data
       } else {
-        for (let i = 0; i < added.length; i++) {
-          this._requestSoul(added[i], updateQuery)
-        }
-
-        for (let i = 0; i < removed.length; i++) {
-          this._unlistenSoul(removed[i], updateQuery)
+        if (!uuidFn) throw new Error('Must specify uuid function to put to incomplete path')
+        soul = await uuidFn([...existing, ...remaining.slice(0, i + 1)])
+        chainVal = {
+          '#': soul
         }
       }
 
-      lastSouls = souls
+      graph[previousSoul] = {
+        _: {
+          '#': previousSoul,
+          '>': {
+            [key]: now
+          }
+        },
+        [key]: chainVal
+      }
+
+      if (soul) previousSoul = soul
     }
 
-    updateQuery()
-    return end
+    return this.put(graph, cb)
+  }
+
+  getPathSouls(path: string[]) {
+    const promise = new Promise<string[]>(ok => {
+      if (path.length === 1) {
+        ok(path)
+        return
+      }
+
+      let lastSouls = [] as string[]
+
+      const end = () => {
+        for (let i = 0; i < lastSouls.length; i++) {
+          this._unlistenSoul(lastSouls[i], updateQuery)
+        }
+        lastSouls = []
+      }
+
+      const updateQuery = () => {
+        const { souls, complete } = getPathData(path, this._graph)
+        const [added, removed] = diffSets(lastSouls, souls)
+
+        if (complete) {
+          end()
+          ok(souls)
+        } else {
+          for (let i = 0; i < added.length; i++) {
+            this._requestSoul(added[i], updateQuery)
+          }
+
+          for (let i = 0; i < removed.length; i++) {
+            this._unlistenSoul(removed[i], updateQuery)
+          }
+        }
+
+        lastSouls = souls
+      }
+
+      updateQuery()
+    })
+
+    return promise
   }
 
   /**

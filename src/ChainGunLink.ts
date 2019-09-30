@@ -6,22 +6,27 @@ export class ChainGunLink {
   key: string
   soul?: string
 
-  private _updateEvent: GunEvent<GunValue, string>
-  private _chain: ChainGun
-  private _parent?: ChainGunLink
-  private _endQuery?: () => void
-  private _lastValue: GunValue | undefined
-  private _hasReceived: boolean
+  protected _opt: GunChainOptions
+  protected _updateEvent: GunEvent<GunValue, string>
+  protected _chain: ChainGun
+  protected _parent?: ChainGunLink
+  protected _endQuery?: () => void
+  protected _lastValue: GunValue | undefined
+  protected _hasReceived: boolean
 
   constructor(chain: ChainGun, key: string, parent?: ChainGunLink) {
     this.key = key
     if (!parent) this.soul = key
+    this._opt = {}
     this._chain = chain
     this._parent = parent
     this._hasReceived = false
     this._updateEvent = new GunEvent(this.getPath().join('|'))
   }
 
+  /**
+   * @returns path of this node
+   */
   getPath(): string[] {
     if (this._parent) return [...this._parent.getPath(), this.key]
     return [this.key]
@@ -63,7 +68,7 @@ export class ChainGunLink {
    * @returns same chain context
    */
   put(value: GunValue, cb?: GunMsgCb) {
-    this._chain.graph.putPath(this.getPath(), value, cb)
+    this._chain.graph.putPath(this.getPath(), value, cb, this.opt().uuid)
     return this
   }
 
@@ -118,10 +123,16 @@ export class ChainGunLink {
    * Change the configuration of this chain link
    *
    * @param options
-   * @returns same chain context
+   * @returns current options
    */
-  opt(options: GunChainOptions) {
-    return this
+  opt(options?: GunChainOptions): GunChainOptions {
+    if (options) {
+      this._opt = { ...this._opt, ...options }
+    }
+    if (this._parent) {
+      return { ...this._parent.opt(), ...this._opt }
+    }
+    return this._opt
   }
 
   /**
@@ -147,6 +158,9 @@ export class ChainGunLink {
    * @returns same chain context
    */
   on(cb: GunOnCb) {
+    if (this.key === '') {
+    }
+
     this._updateEvent.on(cb)
     if (!this._endQuery) {
       this._endQuery = this._chain.graph.query(this.getPath(), this._onQueryResponse.bind(this))
