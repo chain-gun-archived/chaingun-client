@@ -7,7 +7,7 @@ export class ChainGunLink {
   soul?: string
 
   protected _opt: GunChainOptions
-  protected _updateEvent: GunEvent<GunValue, string>
+  protected _updateEvent: GunEvent<GunValue | undefined, string>
   protected _chain: ChainGun
   protected _parent?: ChainGunLink
   protected _endQuery?: () => void

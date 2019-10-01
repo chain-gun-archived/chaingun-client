@@ -21,7 +21,14 @@ interface GunGraphOptions {
  */
 export class GunGraph {
   id: string
-  graphData: GunEvent<GunGraphData, string | undefined, string | undefined>
+
+  events: {
+    graphData: GunEvent<GunGraphData, string | undefined, string | undefined>
+    put: GunEvent<ChainGunPut>
+    get: GunEvent<ChainGunGet>
+    off: GunEvent<string>
+  }
+
   activeConnectors: number
 
   private _opt: GunGraphOptions
@@ -38,7 +45,12 @@ export class GunGraph {
     this._receiveGraphData = this._receiveGraphData.bind(this)
     this.__onConnectorStatus = this.__onConnectorStatus.bind(this)
     this.activeConnectors = 0
-    this.graphData = new GunEvent('graph data')
+    this.events = {
+      graphData: new GunEvent('graph data'),
+      put: new GunEvent('put data'),
+      get: new GunEvent('request soul'),
+      off: new GunEvent('off event')
+    }
     this._opt = {}
     this._graph = {}
     this._nodes = {}
@@ -66,10 +78,12 @@ export class GunGraph {
    */
   connect(connector: GunGraphConnector) {
     if (this._connectors.indexOf(connector) !== -1) return this
-    if (connector.isConnected) this.activeConnectors++
+    this._connectors.push(connector.connectToGraph(this))
+
     connector.events.connection.on(this.__onConnectorStatus)
     connector.events.graphData.on(this._receiveGraphData)
-    this._connectors.push(connector)
+
+    if (connector.isConnected) this.activeConnectors++
     return this
   }
 
@@ -268,39 +282,54 @@ export class GunGraph {
   }
 
   /**
+   * Request node data
+   *
+   * @param soul identifier of node to request
+   * @param cb callback for response messages
+   * @param msgId optional unique message identifier
+   * @returns a function to cleanup listeners when done
+   */
+  get(soul: string, cb?: GunMsgCb, msgId?: string) {
+    const id = msgId || generateMessageId()
+
+    this.events.get.trigger({
+      soul,
+      msgId: id,
+      cb
+    })
+
+    return () => this.events.off.trigger(id)
+  }
+
+  /**
    * Write node data
    *
    * @param data one or more gun nodes keyed by soul
+   * @param cb optional callback for response messages
+   * @param msgId optional unique message identifier
+   * @returns a function to clean up listeners when done
    */
-  async put(data: GunGraphData, cb?: GunMsgCb) {
+  put(data: GunGraphData, cb?: GunMsgCb, msgId?: string) {
     let diff: GunGraphData | undefined = flattenGraphData(addMissingState(data))
 
-    for (let i = 0; i < this._writeMiddleware.length; i++) {
+    const id = msgId || generateMessageId()
+    ;(async () => {
+      for (let i = 0; i < this._writeMiddleware.length; i++) {
+        if (!diff) return
+        diff = await this._writeMiddleware[i](diff, this._graph)
+      }
       if (!diff) return
-      diff = await this._writeMiddleware[i](diff, this._graph)
-    }
 
-    if (!diff) return
-
-    const msgId = generateMessageId()
-
-    for (let i = 0; i < this._connectors.length; i++) {
-      this._connectors[i].put({
-        msgId,
+      this.events.put.trigger({
+        msgId: id,
         graph: diff,
         cb
       })
-    }
 
-    const souls = Object.keys(diff)
+      this._receiveGraphData(diff)
+    })()
 
-    /*
-    for (let i = 0; i < souls.length; i++) {
-      this._node(souls[i])
-    }
-    */
-
-    this._receiveGraphData(diff)
+    return () => this.events.off.trigger(id)
   }
 
   /**
@@ -330,27 +359,19 @@ export class GunGraph {
 
     if (!diff) return
 
-    const souls = Object.keys(diff)
-
-    for (let i = 0; i < souls.length; i++) {
-      const soul = souls[i]
+    for (let soul in diff) {
       const node = this._nodes[soul]
-
-      if (!node) {
-        this._forgetSoul(soul)
-        continue
-      }
-
-      const nodeData = (this._graph[soul] = mergeGunNodes(
-        this._graph[soul],
-        diff[soul],
-        this._opt.mutable ? 'mutable' : 'immutable'
-      ))
-
-      if (node) node.receive(nodeData)
+      if (!node) continue
+      node.receive(
+        (this._graph[soul] = mergeGunNodes(
+          this._graph[soul],
+          diff[soul],
+          this._opt.mutable ? 'mutable' : 'immutable'
+        ))
+      )
     }
 
-    this.graphData.trigger(diff, id, replyToId)
+    this.events.graphData.trigger(diff, id, replyToId)
   }
 
   private _node(soul: string) {

@@ -1,5 +1,6 @@
 import { GunEvent } from '../ControlFlow/GunEvent'
 import { GunProcessQueue } from '../ControlFlow/GunProcessQueue'
+import { GunGraph } from '../Graph/GunGraph'
 
 export abstract class GunGraphConnector {
   name: string
@@ -18,6 +19,9 @@ export abstract class GunGraphConnector {
     this.isConnected = false
     this.name = name
 
+    this.put = this.put.bind(this)
+    this.off = this.off.bind(this)
+
     this.inputQueue = new GunProcessQueue<GunMsg>(`${name}.inputQueue`)
     this.outputQueue = new GunProcessQueue<GunMsg>(`${name}.outputQueue`)
 
@@ -31,13 +35,32 @@ export abstract class GunGraphConnector {
     this.events.connection.on(this.__onConnectedChange)
   }
 
+  connectToGraph(graph: GunGraph) {
+    graph.events.off.on(this.off)
+    return this
+  }
+
+  off(msgId: string) {
+    return this
+  }
+
+  sendPutsFromGraph(graph: GunGraph) {
+    graph.events.put.on(this.put)
+  }
+
+  sendRequestsFromGraph(graph: GunGraph) {
+    graph.events.get.on(req => {
+      this.get(req)
+    })
+  }
+
   waitForConnection() {
     if (this.isConnected) return Promise.resolve()
     return new Promise(ok => {
       const onConnected = (connected?: boolean) => {
         if (!connected) return
         ok()
-        this.events.connection.on(onConnected)
+        this.events.connection.off(onConnected)
       }
       this.events.connection.on(onConnected)
     })
@@ -48,17 +71,7 @@ export abstract class GunGraphConnector {
    *
    * @returns A function to be called to clean up callback listeners
    */
-  put({
-    graph,
-    msgId = '',
-    replyTo = '',
-    cb
-  }: {
-    graph: GunGraphData
-    msgId?: string
-    replyTo?: string
-    cb?: GunMsgCb
-  }) {
+  put({ graph, msgId = '', replyTo = '', cb }: ChainGunPut) {
     return () => {}
   }
 
@@ -72,12 +85,7 @@ export abstract class GunGraphConnector {
     cb,
     msgId = '',
     key = '' // TODO
-  }: {
-    soul: string
-    msgId?: string
-    key?: string
-    cb?: GunMsgCb
-  }) {
+  }: ChainGunGet) {
     return () => {}
   }
 

@@ -45,9 +45,12 @@ export class ChainGun {
     this._opt = { ...this._opt, ...options }
 
     if (options.peers) {
-      options.peers.forEach(peer =>
-        this.graph.connect(new WebSocketGraphConnector(peer, this._opt.WS))
-      )
+      options.peers.forEach(peer => {
+        const connector = new WebSocketGraphConnector(peer, this._opt.WS)
+        connector.sendPutsFromGraph(this.graph)
+        connector.sendRequestsFromGraph(this.graph)
+        this.graph.connect(connector)
+      })
     }
 
     return this

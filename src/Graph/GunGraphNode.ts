@@ -1,6 +1,5 @@
 import { GunGraph } from './GunGraph'
 import { GunEvent } from '../ControlFlow/GunEvent'
-import { generateMessageId } from './GunGraphUtils'
 
 /**
  * Query state around a single node in the graph
@@ -17,6 +16,7 @@ export class GunGraphNode {
     soul: string,
     updateGraph: (data: GunGraphData, replyToId?: string) => void
   ) {
+    this._onDirectQueryReply = this._onDirectQueryReply.bind(this)
     this._data = new GunEvent<GunNode | undefined>(`<GunGraphNode ${soul}>`)
     this._graph = graph
     this._updateGraph = updateGraph
@@ -60,23 +60,7 @@ export class GunGraphNode {
 
   private _ask() {
     if (this._endCurQuery) return
-
-    const endFns: (() => void)[] = []
-
-    const msgId = generateMessageId()
-
-    this._graph.eachConnector(connector => {
-      endFns.push(
-        connector.get({
-          msgId,
-          soul: this.soul,
-          cb: this._onDirectQueryReply.bind(this)
-        })
-      )
-    })
-
-    this._endCurQuery = () => endFns.map(fn => fn())
-    return this
+    return this._graph.get(this.soul, this._onDirectQueryReply)
   }
 
   private _onDirectQueryReply(msg: GunMsg) {

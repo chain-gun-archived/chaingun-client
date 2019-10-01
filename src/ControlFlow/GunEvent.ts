@@ -1,4 +1,4 @@
-type EventCb<T = any, U = any, V = any> = (a?: T, b?: U, c?: V) => void
+type EventCb<T = any, U = any, V = any> = (a: T, b?: U, c?: V) => void
 
 /**
  * Generic event/listener system
@@ -55,7 +55,7 @@ export class GunEvent<T = any, U = any, V = any> {
   /**
    * Trigger this event
    */
-  trigger(a?: T, b?: U, c?: V) {
+  trigger(a: T, b?: U, c?: V) {
     this._listeners.forEach(cb => cb(a, b, c))
     return this
   }

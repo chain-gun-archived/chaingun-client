@@ -14,22 +14,18 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
     this.inputQueue.completed.on(this._onProcessedInput)
   }
 
+  off(msgId: string) {
+    super.off(msgId)
+    delete this._callbacks[msgId]
+    return this
+  }
+
   /**
    * Send graph data for one or more nodes
    *
    * @returns A function to be called to clean up callback listeners
    */
-  put({
-    graph,
-    msgId = '',
-    replyTo = '',
-    cb
-  }: {
-    graph: GunGraphData
-    msgId?: string
-    replyTo?: string
-    cb?: GunMsgCb
-  }) {
+  put({ graph, msgId = '', replyTo = '', cb }: ChainGunPut) {
     if (!graph) return () => {}
     const msg: GunMsg = {
       put: graph
@@ -50,12 +46,7 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
     cb,
     msgId = '',
     key = '' // TODO
-  }: {
-    soul: string
-    msgId?: string
-    key?: string
-    cb?: GunMsgCb
-  }) {
+  }: ChainGunGet) {
     const get = { '#': soul }
     // if (key) get["."] = key
     const msg: GunMsg = { get }
@@ -71,32 +62,11 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
    * @param cb
    */
   req(msg: GunMsg, cb?: GunMsgCb) {
-    const now = new Date().getTime()
-    let done: number
     const reqId = (msg['#'] = msg['#'] || generateMessageId())
-
-    const timeout = setTimeout(() => {
-      if (cb) console.log('slow req', msg)
-    }, 10000)
-
-    const cbWrap = (resp: GunMsg) => {
-      if (!done) {
-        done = new Date().getTime()
-        const duration = done - now
-        if (duration > 500) {
-          console.log('slow req', duration, msg.put ? Object.keys(msg.put) : msg)
-        }
-      }
-      clearTimeout(timeout)
-
-      if (cb) return cb(resp)
-    }
-
-    if (cb) this._callbacks[reqId] = cbWrap
+    if (cb) this._callbacks[reqId] = cb
     this.send([msg])
-
     return () => {
-      delete this._callbacks[reqId]
+      this.off(reqId)
     }
   }
 

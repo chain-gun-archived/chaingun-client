@@ -48,3 +48,17 @@ type ChainGunMiddleware = (
   existingGraph: GunGraphData
 ) => GunGraphData | undefined | Promise<GunGraphData | undefined>
 type ChainGunMiddlewareType = 'read' | 'write'
+
+interface ChainGunPut {
+  graph: GunGraphData
+  msgId?: string
+  replyTo?: string
+  cb?: GunMsgCb
+}
+
+interface ChainGunGet {
+  soul: string
+  msgId?: string
+  key?: string
+  cb?: GunMsgCb
+}
