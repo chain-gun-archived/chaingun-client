@@ -171,7 +171,11 @@ export function nodeToGraph(node: GunNode) {
       continue
     }
 
-    const soul = val && (val._ && val._['#'])
+    let soul = val && (val._ && val._['#'])
+
+    if (val instanceof ChainGunLink && val.soul) {
+      soul = val.soul
+    }
 
     if (soul) {
       const edge = { '#': soul }
