@@ -162,7 +162,7 @@ export function nodeToGraph(node: GunNode) {
   for (let key in node) {
     if (key === '_') continue
     const val = node[key]
-    if (typeof val !== 'object') continue
+    if (typeof val !== 'object' || val === null) continue
 
     if (val.soul) {
       const edge = { '#': val.soul }
