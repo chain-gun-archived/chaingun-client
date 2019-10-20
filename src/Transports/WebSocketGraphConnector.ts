@@ -1,9 +1,10 @@
-import { GunGraphWireConnector } from './GunGraphWireConnector'
+import { GunMsg } from '@chaingun/types'
 import ReconnectingWS from 'reconnecting-websocket'
+import { GunGraphWireConnector } from './GunGraphWireConnector'
 
 export class WebSocketGraphConnector extends GunGraphWireConnector {
-  url: string
-  private _ws: WebSocket
+  public readonly url: string
+  private readonly _ws: WebSocket
 
   constructor(url: string, WS = WebSocket) {
     super(`<WebSocketGraphConnector ${url}>`)
@@ -12,7 +13,7 @@ export class WebSocketGraphConnector extends GunGraphWireConnector {
     this._ws = this._connectWebSocket(WS)
   }
 
-  private _connectWebSocket(WS = WebSocket) {
+  private _connectWebSocket(WS = WebSocket): WebSocket {
     const ws = (new ReconnectingWS(this.url.replace(/^http/, 'ws'), [], {
       WebSocket: WS
     }) as unknown) as WebSocket
@@ -24,8 +25,10 @@ export class WebSocketGraphConnector extends GunGraphWireConnector {
     return ws
   }
 
-  private _sendToWebsocket(msgs: GunMsg[]) {
-    if (!msgs.length) return msgs
+  private _sendToWebsocket(msgs: readonly GunMsg[]): readonly GunMsg[] {
+    if (!msgs.length) {
+      return msgs
+    }
     if (msgs.length === 1) {
       this._ws.send(JSON.stringify(msgs[0]))
     } else if (msgs.length > 0) {
@@ -34,18 +37,22 @@ export class WebSocketGraphConnector extends GunGraphWireConnector {
     return msgs
   }
 
-  private _onOutputProcessed(msg?: GunMsg) {
-    if (msg) this._sendToWebsocket([msg])
+  private _onOutputProcessed(msg?: GunMsg): void {
+    if (msg) {
+      this._sendToWebsocket([msg])
+    }
   }
 
-  private _onReceiveSocketData(msg: MessageEvent) {
+  private _onReceiveSocketData(msg: MessageEvent): void {
     const raw = msg.data
-    const json = <GunMsg | (GunMsg | string)[]>JSON.parse(raw)
+    const json = JSON.parse(raw) as GunMsg | ReadonlyArray<string>
 
     if (Array.isArray(json)) {
-      this.ingest(json.map((x: any) => (typeof x === 'string' ? JSON.parse(x) : x)))
+      this.ingest(
+        json.map((x: any) => (typeof x === 'string' ? JSON.parse(x) : x))
+      )
     } else {
-      this.ingest([json])
+      this.ingest([json as GunMsg])
     }
   }
 }

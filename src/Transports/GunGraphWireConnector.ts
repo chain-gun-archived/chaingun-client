@@ -1,9 +1,10 @@
-import { GunGraphConnector } from './GunGraphConnector'
+import { ChainGunGet, ChainGunPut, GunMsg, GunMsgCb } from '@chaingun/types'
 import { generateMessageId } from '../Graph/GunGraphUtils'
+import { GunGraphConnector } from './GunGraphConnector'
 
 export abstract class GunGraphWireConnector extends GunGraphConnector {
-  private _callbacks: {
-    [msgId: string]: GunMsgCb
+  private readonly _callbacks: {
+    readonly [msgId: string]: GunMsgCb
   }
 
   constructor(name = 'GunWireProtocol') {
@@ -14,8 +15,10 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
     this.inputQueue.completed.on(this._onProcessedInput)
   }
 
-  off(msgId: string) {
+  public off(msgId: string): GunGraphWireConnector {
     super.off(msgId)
+    // @ts-ignore
+    // tslint:disable-next-line: no-delete
     delete this._callbacks[msgId]
     return this
   }
@@ -25,13 +28,22 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
    *
    * @returns A function to be called to clean up callback listeners
    */
-  put({ graph, msgId = '', replyTo = '', cb }: ChainGunPut) {
-    if (!graph) return () => {}
+  public put({ graph, msgId = '', replyTo = '', cb }: ChainGunPut): () => void {
+    if (!graph) {
+      // tslint:disable-next-line: no-empty
+      return () => {}
+    }
     const msg: GunMsg = {
       put: graph
     }
-    if (msgId) msg['#'] = msgId
-    if (replyTo) msg['@'] = replyTo
+    if (msgId) {
+      // @ts-ignore
+      msg['#'] = msgId
+    }
+    if (replyTo) {
+      // @ts-ignore
+      msg['@'] = replyTo
+    }
 
     return this.req(msg, cb)
   }
@@ -41,16 +53,13 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
    *
    * @returns A function to be called to clean up callback listeners
    */
-  get({
-    soul,
-    cb,
-    msgId = '',
-    key = '' // TODO
-  }: ChainGunGet) {
+  public get({ soul, cb, msgId = '' }: ChainGunGet): () => void {
     const get = { '#': soul }
-    // if (key) get["."] = key
     const msg: GunMsg = { get }
-    if (msgId) msg['#'] = msgId
+    if (msgId) {
+      // @ts-ignore
+      msg['#'] = msgId
+    }
 
     return this.req(msg, cb)
   }
@@ -61,25 +70,35 @@ export abstract class GunGraphWireConnector extends GunGraphConnector {
    * @param msg
    * @param cb
    */
-  req(msg: GunMsg, cb?: GunMsgCb) {
+  public req(msg: GunMsg, cb?: GunMsgCb): () => void {
+    // @ts-ignore
     const reqId = (msg['#'] = msg['#'] || generateMessageId())
-    if (cb) this._callbacks[reqId] = cb
+    if (cb) {
+      // @ts-ignore
+      this._callbacks[reqId] = cb
+    }
     this.send([msg])
     return () => {
       this.off(reqId)
     }
   }
 
-  private _onProcessedInput(msg?: GunMsg) {
-    if (!msg) return
+  private _onProcessedInput(msg?: GunMsg): void {
+    if (!msg) {
+      return
+    }
     const id = msg['#']
     const replyTo = msg['@']
 
-    if (msg.put) this.events.graphData.trigger(msg.put, id, replyTo)
+    if (msg.put) {
+      this.events.graphData.trigger(msg.put, id, replyTo)
+    }
 
     if (replyTo) {
       const cb = this._callbacks[replyTo]
-      if (cb) cb(msg)
+      if (cb) {
+        cb(msg)
+      }
     }
 
     this.events.receiveMessage.trigger(msg)

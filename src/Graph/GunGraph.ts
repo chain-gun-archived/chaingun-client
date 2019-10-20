@@ -1,17 +1,30 @@
-import { GunEvent } from '../ControlFlow/GunEvent'
-import { GunGraphConnector } from '../Transports/GunGraphConnector'
+import { addMissingState, mergeGunNodes } from '@chaingun/crdt'
 import {
-  mergeGunNodes,
+  ChainGunGet,
+  ChainGunPut,
+  GunGraphData,
+  GunMsgCb,
+  GunNode,
+  GunValue
+} from '@chaingun/types'
+import { GunEvent } from '../ControlFlow/GunEvent'
+import {
+  ChainGunMiddleware,
+  ChainGunMiddlewareType,
+  GunNodeListenCb,
+  GunOnCb
+} from '../interfaces'
+import { GunGraphConnector } from '../Transports/GunGraphConnector'
+import { GunGraphNode } from './GunGraphNode'
+import {
   diffSets,
   flattenGraphData,
-  addMissingState,
   generateMessageId,
   getPathData
 } from './GunGraphUtils'
-import { GunGraphNode } from './GunGraphNode'
 
 interface GunGraphOptions {
-  mutable?: boolean
+  readonly mutable?: boolean
 }
 
 /**
@@ -20,24 +33,32 @@ interface GunGraphOptions {
  * Provides facilities for querying and writing to graph data from one or more sources
  */
 export class GunGraph {
-  id: string
+  public readonly id: string
 
-  events: {
-    graphData: GunEvent<GunGraphData, string | undefined, string | undefined>
-    put: GunEvent<ChainGunPut>
-    get: GunEvent<ChainGunGet>
-    off: GunEvent<string>
+  public readonly events: {
+    readonly graphData: GunEvent<
+      GunGraphData,
+      string | undefined,
+      string | undefined
+    >
+    readonly put: GunEvent<ChainGunPut>
+    readonly get: GunEvent<ChainGunGet>
+    readonly off: GunEvent<string>
   }
 
-  activeConnectors: number
+  public readonly activeConnectors: number
 
+  // tslint:disable-next-line: readonly-keyword
   private _opt: GunGraphOptions
-  private _connectors: GunGraphConnector[]
-  private _readMiddleware: ChainGunMiddleware[]
-  private _writeMiddleware: ChainGunMiddleware[]
-  private _graph: GunGraphData
-  private _nodes: {
-    [soul: string]: GunGraphNode
+  // tslint:disable-next-line: readonly-array
+  private readonly _connectors: GunGraphConnector[]
+  // tslint:disable-next-line: readonly-array
+  private readonly _readMiddleware: ChainGunMiddleware[]
+  // tslint:disable-next-line: readonly-array
+  private readonly _writeMiddleware: ChainGunMiddleware[]
+  private readonly _graph: GunGraphData
+  private readonly _nodes: {
+    readonly [soul: string]: GunGraphNode
   }
 
   constructor() {
@@ -46,10 +67,10 @@ export class GunGraph {
     this.__onConnectorStatus = this.__onConnectorStatus.bind(this)
     this.activeConnectors = 0
     this.events = {
-      graphData: new GunEvent('graph data'),
-      put: new GunEvent('put data'),
       get: new GunEvent('request soul'),
-      off: new GunEvent('off event')
+      graphData: new GunEvent('graph data'),
+      off: new GunEvent('off event'),
+      put: new GunEvent('put data')
     }
     this._opt = {}
     this._graph = {}
@@ -66,7 +87,7 @@ export class GunGraph {
    *
    * @param options
    */
-  opt(options: GunGraphOptions) {
+  public opt(options: GunGraphOptions): GunGraph {
     this._opt = { ...this._opt, ...options }
     return this
   }
@@ -76,14 +97,19 @@ export class GunGraph {
    *
    * @param connector the source or destination for graph data
    */
-  connect(connector: GunGraphConnector) {
-    if (this._connectors.indexOf(connector) !== -1) return this
+  public connect(connector: GunGraphConnector): GunGraph {
+    if (this._connectors.indexOf(connector) !== -1) {
+      return this
+    }
     this._connectors.push(connector.connectToGraph(this))
 
     connector.events.connection.on(this.__onConnectorStatus)
     connector.events.graphData.on(this._receiveGraphData)
 
-    if (connector.isConnected) this.activeConnectors++
+    if (connector.isConnected) {
+      // @ts-ignore
+      this.activeConnectors++
+    }
     return this
   }
 
@@ -92,12 +118,17 @@ export class GunGraph {
    *
    * @param connector the source or destination for graph data
    */
-  disconnect(connector: GunGraphConnector) {
+  public disconnect(connector: GunGraphConnector): GunGraph {
     const idx = this._connectors.indexOf(connector)
     connector.events.graphData.off(this._receiveGraphData)
     connector.events.connection.off(this.__onConnectorStatus)
-    if (idx !== -1) this._connectors.splice(idx, 1)
-    if (connector.isConnected) this.activeConnectors--
+    if (idx !== -1) {
+      this._connectors.splice(idx, 1)
+    }
+    if (connector.isConnected) {
+      // @ts-ignore
+      this.activeConnectors--
+    }
     return this
   }
 
@@ -107,7 +138,10 @@ export class GunGraph {
    * @param middleware The middleware function to add
    * @param kind Optionaly register write middleware instead of read by passing "write"
    */
-  use(middleware: ChainGunMiddleware, kind = 'read' as ChainGunMiddlewareType) {
+  public use(
+    middleware: ChainGunMiddleware,
+    kind = 'read' as ChainGunMiddlewareType
+  ): GunGraph {
     if (kind === 'read') {
       this._readMiddleware.push(middleware)
     } else if (kind === 'write') {
@@ -122,13 +156,20 @@ export class GunGraph {
    * @param middleware The middleware function to remove
    * @param kind Optionaly unregister write middleware instead of read by passing "write"
    */
-  unuse(middleware: ChainGunMiddleware, kind = 'read' as ChainGunMiddlewareType) {
+  public unuse(
+    middleware: ChainGunMiddleware,
+    kind = 'read' as ChainGunMiddlewareType
+  ): GunGraph {
     if (kind === 'read') {
       const idx = this._readMiddleware.indexOf(middleware)
-      if (idx !== -1) this._readMiddleware.splice(idx, 1)
+      if (idx !== -1) {
+        this._readMiddleware.splice(idx, 1)
+      }
     } else if (kind === 'write') {
       const idx = this._writeMiddleware.indexOf(middleware)
-      if (idx !== -1) this._writeMiddleware.splice(idx, 1)
+      if (idx !== -1) {
+        this._writeMiddleware.splice(idx, 1)
+      }
     }
 
     return this
@@ -141,8 +182,10 @@ export class GunGraph {
    * @param cb The callback to invoke with results
    * @returns a cleanup function to after done with query
    */
-  query(path: string[], cb: GunOnCb) {
-    let lastSouls = [] as string[]
+  public query(path: readonly string[], cb: GunOnCb): () => void {
+    // tslint:disable-next-line: no-let
+    let lastSouls = [] as readonly string[]
+    // tslint:disable-next-line: no-let
     let currentValue: GunValue | undefined
 
     const updateQuery = () => {
@@ -157,21 +200,22 @@ export class GunGraph {
         cb(value, path[path.length - 1])
       }
 
-      for (let i = 0; i < added.length; i++) {
-        this._requestSoul(added[i], updateQuery)
+      for (const soul of added) {
+        this._requestSoul(soul, updateQuery)
       }
 
-      for (let i = 0; i < removed.length; i++) {
-        this._unlistenSoul(removed[i], updateQuery)
+      for (const soul of removed) {
+        this._unlistenSoul(soul, updateQuery)
       }
 
       lastSouls = souls
     }
 
     updateQuery()
+
     return () => {
-      for (let i = 0; i < lastSouls.length; i++) {
-        this._unlistenSoul(lastSouls[i], updateQuery)
+      for (const soul of lastSouls) {
+        this._unlistenSoul(soul, updateQuery)
       }
     }
   }
@@ -184,45 +228,57 @@ export class GunGraph {
    * @param cb Callback function to be invoked for write acks
    * @returns a promise
    */
-  async putPath(
-    fullPath: string[],
+  public async putPath(
+    fullPath: readonly string[],
     data: GunValue,
     cb?: GunMsgCb,
-    uuidFn?: (path: string[]) => Promise<string> | string
-  ) {
-    if (!fullPath.length) throw new Error('No path specified')
+    uuidFn?: (path: readonly string[]) => Promise<string> | string
+  ): Promise<void> {
+    if (!fullPath.length) {
+      throw new Error('No path specified')
+    }
     const souls = await this.getPathSouls(fullPath)
 
     if (souls.length === fullPath.length) {
-      return this.put(
+      this.put(
         {
           [souls[souls.length - 1]]: data as GunNode
         },
         cb
       )
+      return
     }
 
     const existing = fullPath.slice(0, souls.length)
     const remaining = fullPath.slice(souls.length)
+    // tslint:disable-next-line: no-let
     let previousSoul = souls[souls.length - 1]
     const graph: GunGraphData = {}
 
+    // tslint:disable-next-line: no-let
     for (let i = 0; i < remaining.length; i++) {
       const now = new Date().getTime()
       const key = remaining[i]
+      // tslint:disable-next-line: no-let
       let chainVal: GunValue
+      // tslint:disable-next-line: no-let
       let soul = ''
 
       if (i === remaining.length - 1) {
         chainVal = data
       } else {
-        if (!uuidFn) throw new Error('Must specify uuid function to put to incomplete path')
+        if (!uuidFn) {
+          throw new Error(
+            'Must specify uuid function to put to incomplete path'
+          )
+        }
         soul = await uuidFn([...existing, ...remaining.slice(0, i + 1)])
         chainVal = {
           '#': soul
         }
       }
 
+      // @ts-ignore
       graph[previousSoul] = {
         _: {
           '#': previousSoul,
@@ -233,24 +289,27 @@ export class GunGraph {
         [key]: chainVal
       }
 
-      if (soul) previousSoul = soul
+      if (soul) {
+        previousSoul = soul
+      }
     }
 
-    return this.put(graph, cb)
+    this.put(graph, cb)
   }
 
-  getPathSouls(path: string[]) {
-    const promise = new Promise<string[]>(ok => {
+  public getPathSouls(path: readonly string[]): Promise<readonly string[]> {
+    const promise = new Promise<readonly string[]>(ok => {
       if (path.length === 1) {
         ok(path)
         return
       }
 
-      let lastSouls = [] as string[]
+      // tslint:disable-next-line: no-let
+      let lastSouls = [] as readonly string[]
 
       const end = () => {
-        for (let i = 0; i < lastSouls.length; i++) {
-          this._unlistenSoul(lastSouls[i], updateQuery)
+        for (const soul of lastSouls) {
+          this._unlistenSoul(soul, updateQuery)
         }
         lastSouls = []
       }
@@ -263,12 +322,12 @@ export class GunGraph {
           end()
           ok(souls)
         } else {
-          for (let i = 0; i < added.length; i++) {
-            this._requestSoul(added[i], updateQuery)
+          for (const soul of added) {
+            this._requestSoul(soul, updateQuery)
           }
 
-          for (let i = 0; i < removed.length; i++) {
-            this._unlistenSoul(removed[i], updateQuery)
+          for (const soul of removed) {
+            this._unlistenSoul(soul, updateQuery)
           }
         }
 
@@ -289,13 +348,13 @@ export class GunGraph {
    * @param msgId optional unique message identifier
    * @returns a function to cleanup listeners when done
    */
-  get(soul: string, cb?: GunMsgCb, msgId?: string) {
+  public get(soul: string, cb?: GunMsgCb, msgId?: string): () => void {
     const id = msgId || generateMessageId()
 
     this.events.get.trigger({
-      soul,
+      cb,
       msgId: id,
-      cb
+      soul
     })
 
     return () => this.events.off.trigger(id)
@@ -309,21 +368,26 @@ export class GunGraph {
    * @param msgId optional unique message identifier
    * @returns a function to clean up listeners when done
    */
-  put(data: GunGraphData, cb?: GunMsgCb, msgId?: string) {
+  public put(data: GunGraphData, cb?: GunMsgCb, msgId?: string): () => void {
+    // tslint:disable-next-line: no-let
     let diff: GunGraphData | undefined = flattenGraphData(addMissingState(data))
 
     const id = msgId || generateMessageId()
     ;(async () => {
-      for (let i = 0; i < this._writeMiddleware.length; i++) {
-        if (!diff) return
-        diff = await this._writeMiddleware[i](diff, this._graph)
+      for (const fn of this._writeMiddleware) {
+        if (!diff) {
+          return
+        }
+        diff = await fn(diff, this._graph)
       }
-      if (!diff) return
+      if (!diff) {
+        return
+      }
 
       this.events.put.trigger({
-        msgId: id,
+        cb,
         graph: diff,
-        cb
+        msgId: id
       })
 
       this._receiveGraphData(diff)
@@ -337,10 +401,11 @@ export class GunGraph {
    *
    * @param cb The callback to invoke
    */
-  eachConnector(cb: (connector: GunGraphConnector) => void) {
-    for (let i = 0; i < this._connectors.length; i++) {
-      cb(this._connectors[i])
+  public eachConnector(cb: (connector: GunGraphConnector) => void): GunGraph {
+    for (const connector of this._connectors) {
+      cb(connector)
     }
+
     return this
   }
 
@@ -349,20 +414,36 @@ export class GunGraph {
    *
    * @param data node data to include
    */
-  private async _receiveGraphData(data?: GunGraphData, id?: string, replyToId?: string) {
+  protected async _receiveGraphData(
+    data?: GunGraphData,
+    id?: string,
+    replyToId?: string
+  ): Promise<void> {
+    // tslint:disable-next-line: no-let
     let diff = data
 
-    for (let i = 0; i < this._readMiddleware.length; i++) {
-      if (!diff) return
-      diff = await this._readMiddleware[i](diff, this._graph)
+    for (const fn of this._readMiddleware) {
+      if (!diff) {
+        return
+      }
+      diff = await fn(diff, this._graph)
     }
 
-    if (!diff) return
+    if (!diff) {
+      return
+    }
 
-    for (let soul in diff) {
+    for (const soul in diff) {
+      if (!soul) {
+        continue
+      }
+
       const node = this._nodes[soul]
-      if (!node) continue
+      if (!node) {
+        continue
+      }
       node.receive(
+        // @ts-ignore
         (this._graph[soul] = mergeGunNodes(
           this._graph[soul],
           diff[soul],
@@ -374,19 +455,22 @@ export class GunGraph {
     this.events.graphData.trigger(diff, id, replyToId)
   }
 
-  private _node(soul: string) {
+  protected _node(soul: string): GunGraphNode {
+    // @ts-ignore
     return (this._nodes[soul] =
       this._nodes[soul] || new GunGraphNode(this, soul, this._receiveGraphData))
   }
 
-  private _requestSoul(soul: string, cb: GunNodeListenCb) {
+  protected _requestSoul(soul: string, cb: GunNodeListenCb): GunGraph {
     this._node(soul).get(cb)
     return this
   }
 
-  private _unlistenSoul(soul: string, cb: GunNodeListenCb) {
+  protected _unlistenSoul(soul: string, cb: GunNodeListenCb): GunGraph {
     const node = this._nodes[soul]
-    if (!node) return this
+    if (!node) {
+      return this
+    }
     node.off(cb)
     if (node.listenerCount() <= 0) {
       node.off()
@@ -395,20 +479,26 @@ export class GunGraph {
     return this
   }
 
-  private _forgetSoul(soul: string) {
+  protected _forgetSoul(soul: string): GunGraph {
     const node = this._nodes[soul]
     if (node) {
       node.off()
+      // @ts-ignore
+      // tslint:disable-next-line: no-delete
       delete this._nodes[soul]
     }
+    // @ts-ignore
+    // tslint:disable-next-line: no-delete
     delete this._graph[soul]
     return this
   }
 
-  private __onConnectorStatus(connected?: boolean) {
+  protected __onConnectorStatus(connected?: boolean): void {
     if (connected) {
+      // @ts-ignore
       this.activeConnectors++
     } else {
+      // @ts-ignore
       this.activeConnectors--
     }
   }

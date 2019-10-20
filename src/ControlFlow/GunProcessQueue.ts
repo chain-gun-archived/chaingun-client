@@ -1,11 +1,12 @@
+import { GunMsg } from '@chaingun/types'
+import { GunEvent } from './GunEvent'
 import { GunQueue } from './GunQueue'
 import { MiddlewareSystem } from './MiddlewareSystem'
-import { GunEvent } from './GunEvent'
 
 export class GunProcessQueue<T = GunMsg, U = any, V = any> extends GunQueue<T> {
-  middleware: MiddlewareSystem<T, U, V>
-  isProcessing: boolean
-  completed: GunEvent<T>
+  public readonly middleware: MiddlewareSystem<T, U, V>
+  public readonly isProcessing: boolean
+  public readonly completed: GunEvent<T>
 
   constructor(name = 'GunProcessQueue') {
     super(name)
@@ -14,23 +15,40 @@ export class GunProcessQueue<T = GunMsg, U = any, V = any> extends GunQueue<T> {
     this.middleware = new MiddlewareSystem<T, U, V>(`${name}.middleware`)
   }
 
-  async processNext(b?: U, c?: V) {
+  public async processNext(b?: U, c?: V): Promise<void> {
+    // tslint:disable-next-line: no-let
     let item = this.dequeue()
-    if (!item) return item
+    if (!item) {
+      return
+    }
     item = await this.middleware.process(item, b, c)
-    if (item) this.completed.trigger(item)
+    if (item) {
+      this.completed.trigger(item)
+    }
   }
 
-  async process() {
-    if (this.isProcessing) return
+  public enqueueMany(items: readonly T[]): GunProcessQueue<T, U, V> {
+    super.enqueueMany(items)
+    return this
+  }
+
+  public async process(): Promise<void> {
+    if (this.isProcessing) {
+      return
+    }
+
+    // @ts-ignore
     this.isProcessing = true
     while (this.count()) {
       try {
         await this.processNext()
       } catch (e) {
+        // tslint:disable-next-line: no-console
         console.error('Process Queue error', e.stack)
       }
     }
+
+    // @ts-ignore
     this.isProcessing = false
   }
 }

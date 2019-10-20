@@ -1,168 +1,38 @@
-import { GunGraphConnector, ChainGunLink } from '../@notabug/chaingun'
+import { addMissingState, diffGunCRDT, mergeGraph } from '@chaingun/crdt'
+import { GunGraphData, GunNode } from '@chaingun/types'
+import { ChainGunLink } from '../ChainGunLink'
+import { PathData } from '../interfaces'
 
-const EMPTY = {}
-
-export function generateMessageId() {
+export function generateMessageId(): string {
   return Math.random()
     .toString(36)
     .slice(2)
 }
 
-export function addMissingState(graphData: GunGraphData) {
-  const updatedGraphData = { ...graphData }
-  const now = new Date().getTime()
-
-  for (let soul in graphData) {
-    const node = graphData[soul]
-    if (!node) continue
-    const meta = (node._ = node._ || {})
-    meta['#'] = soul
-    const state = (meta['>'] = meta['>'] || {})
-
-    for (let key in node) {
-      if (key === '_') continue
-      state[key] = state[key] || now
-    }
-
-    updatedGraphData[soul] = node
-  }
-
-  return updatedGraphData
-}
-
-const DEFAULT_OPTS = {
-  futureGrace: 10 * 60 * 1000,
-  Lexical: JSON.stringify // what gun.js uses
-}
-
-export function diffGunCRDT(
-  updatedGraph: GunGraphData,
-  existingGraph: GunGraphData,
-  opts: {
-    machineState?: number
-    futureGrace?: number
-    Lexical?: (x: GunValue) => any
-  } = DEFAULT_OPTS
-) {
-  const {
-    machineState = new Date().getTime(),
-    futureGrace = DEFAULT_OPTS.futureGrace,
-    Lexical = DEFAULT_OPTS.Lexical
-  } = opts || EMPTY
-  const maxState = machineState + futureGrace // eslint-disable-line
-
-  const allUpdates: GunGraphData = {}
-
-  for (let soul in updatedGraph) {
-    const existing = existingGraph[soul]
-    const updated = updatedGraph[soul]
-    const existingState: GunNodeState = (existing && existing._ && existing._['>']) || EMPTY
-    const updatedState: GunNodeState = (updated && updated._ && updated._['>']) || EMPTY
-
-    if (!updated) {
-      if (!(soul in existingGraph)) allUpdates[soul] = updated
-      continue
-    }
-
-    let hasUpdates = false
-
-    const updates: GunNode = {
-      _: {
-        '#': soul,
-        '>': {} as GunNodeState
-      }
-    }
-
-    for (let key in updatedState) {
-      const existingKeyState = existingState[key]
-      const updatedKeyState = updatedState[key]
-
-      if (updatedKeyState > maxState || !updatedKeyState) continue
-      if (existingKeyState && existingKeyState >= updatedKeyState) continue
-      if (existingKeyState === updatedKeyState) {
-        const existingVal = (existing && existing[key]) || undefined
-        const updatedVal = updated[key]
-        // This is based on Gun's logic
-        if (Lexical(updatedVal) <= Lexical(existingVal)) continue
-      }
-      updates[key] = updated[key]
-      updates._['>'][key] = updatedKeyState
-      hasUpdates = true
-    }
-
-    if (hasUpdates) {
-      allUpdates[soul] = updates
-    }
-  }
-
-  return Object.keys(allUpdates) ? allUpdates : undefined
-}
-
-export function diffSets(initial: string[], updated: string[]) {
+export function diffSets(
+  initial: readonly string[],
+  updated: readonly string[]
+): readonly [readonly string[], readonly string[]] {
   return [
     updated.filter(key => initial.indexOf(key) === -1),
     initial.filter(key => updated.indexOf(key) === -1)
   ]
 }
 
-export function mergeGunNodes(
-  existing: GunNode | undefined,
-  updates: GunNode | undefined,
-  mut: 'immutable' | 'mutable' = 'immutable'
-) {
-  if (!existing) return updates
-  if (!updates) return existing
-  const existingMeta = existing._ || {}
-  const existingState = existingMeta['>'] || {}
-  const updatedMeta = updates._ || {}
-  const updatedState = updatedMeta['>'] || {}
-
-  if (mut === 'mutable') {
-    existingMeta['>'] = existingState
-    existing._ = existingMeta
-
-    for (let key in updatedState) {
-      existing[key] = updates[key]
-      existingState[key] = updatedState[key]
-    }
-
-    return existing
-  }
-
-  return {
-    ...existing,
-    ...updates,
-    _: {
-      '#': existingMeta['#'],
-      '>': {
-        ...existingMeta['>'],
-        ...updates._['>']
-      }
-    }
-  }
-}
-
-export function mergeGraph(
-  existing: GunGraphData,
-  diff: GunGraphData,
-  mut: 'immutable' | 'mutable' = 'immutable'
-) {
-  const result: GunGraphData = mut ? existing : { ...existing }
-  for (let soul in diff) {
-    result[soul] = mergeGunNodes(existing[soul], diff[soul], mut)
-  }
-  return result
-}
-
-export function nodeToGraph(node: GunNode) {
+export function nodeToGraph(node: GunNode): GunGraphData {
   const modified = { ...node }
+  // tslint:disable-next-line: no-let
   let nodes: GunGraphData = {}
   const nodeSoul = node && node._ && node._['#']
 
-  for (let key in node) {
-    if (key === '_') continue
+  for (const key in node) {
+    if (key === '_') {
+      continue
+    }
     const val = node[key]
-    if (typeof val !== 'object' || val === null) continue
+    if (typeof val !== 'object' || val === null) {
+      continue
+    }
 
     if (val.soul) {
       const edge = { '#': val.soul }
@@ -171,6 +41,7 @@ export function nodeToGraph(node: GunNode) {
       continue
     }
 
+    // tslint:disable-next-line: no-let
     let soul = val && (val._ && val._['#'])
 
     if (val instanceof ChainGunLink && val.soul) {
@@ -188,47 +59,61 @@ export function nodeToGraph(node: GunNode) {
 
   const raw = { [nodeSoul]: modified }
   const withMissingState = addMissingState(raw)
-  const diff = diffGunCRDT(withMissingState, nodes)
-  nodes = diff ? mergeGraph(nodes, diff) : nodes
+  const graphDiff = diffGunCRDT(withMissingState, nodes)
+  nodes = graphDiff ? mergeGraph(nodes, graphDiff) : nodes
 
   return nodes
 }
 
-export function flattenGraphData(data: GunGraphData) {
+export function flattenGraphData(data: GunGraphData): GunGraphData {
+  // tslint:disable-next-line: readonly-array
   const graphs: GunGraphData[] = []
+  // tslint:disable-next-line: no-let
   let flatGraph: GunGraphData = {}
 
-  for (let soul in data) {
+  for (const soul in data) {
+    if (!soul) {
+      continue
+    }
+
     const node = data[soul]
-    if (node) graphs.push(nodeToGraph(node))
+    if (node) {
+      graphs.push(nodeToGraph(node))
+    }
   }
 
-  for (let i = 0; i < graphs.length; i++) {
-    const diff = diffGunCRDT(graphs[i], flatGraph)
+  for (const graph of graphs) {
+    const diff = diffGunCRDT(graph, flatGraph)
     flatGraph = diff ? mergeGraph(flatGraph, diff) : flatGraph
   }
 
   return flatGraph
 }
 
-export function getPathData(keys: string[], graph: GunGraphData): PathData {
+export function getPathData(
+  keys: readonly string[],
+  graph: GunGraphData
+): PathData {
   const lastKey = keys[keys.length - 1]
 
   if (keys.length === 1) {
     return {
+      complete: lastKey in graph,
       souls: keys,
-      value: graph[lastKey],
-      complete: lastKey in graph
+      value: graph[lastKey]
     }
   }
 
-  const { value: parentValue, souls, complete } = getPathData(keys.slice(0, keys.length - 1), graph)
+  const { value: parentValue, souls, complete } = getPathData(
+    keys.slice(0, keys.length - 1),
+    graph
+  )
 
   if (typeof parentValue !== 'object') {
     return {
+      complete: complete || typeof parentValue !== 'undefined',
       souls,
-      value: undefined,
-      complete: complete || typeof parentValue !== 'undefined'
+      value: undefined
     }
   }
 
@@ -236,9 +121,9 @@ export function getPathData(keys: string[], graph: GunGraphData): PathData {
 
   if (!value) {
     return {
+      complete: true,
       souls,
-      value: value,
-      complete: true
+      value
     }
   }
 
@@ -246,15 +131,15 @@ export function getPathData(keys: string[], graph: GunGraphData): PathData {
 
   if (edgeSoul) {
     return {
+      complete: edgeSoul in graph,
       souls: [...souls, edgeSoul],
-      value: graph[edgeSoul],
-      complete: edgeSoul in graph
+      value: graph[edgeSoul]
     }
   }
 
   return {
+    complete: true,
     souls,
-    value,
-    complete: true
+    value
   }
 }

@@ -1,3 +1,3 @@
-# ChainGun
+# @chaingun/client
 
-Reimplementation of gunDB chain logic in TypeScript
+ChainGun Database Client

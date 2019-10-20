@@ -1,6 +1,7 @@
 export class MiddlewareSystem<T, U = undefined, V = undefined> {
-  name: string
-  private _middlewareFunctions: ((a: T, b?: U, c?: V) => T | undefined)[]
+  public readonly name: string
+  // tslint:disable-next-line: readonly-array readonly-keyword
+  private _middlewareFunctions: Array<(a: T, b?: U, c?: V) => T | undefined>
 
   constructor(name = 'MiddlewareSystem') {
     this.name = name
@@ -12,8 +13,13 @@ export class MiddlewareSystem<T, U = undefined, V = undefined> {
    *
    * @param middleware The middleware function to add
    */
-  use(middleware: (a: T, b?: U, c?: V) => T | undefined) {
-    if (this._middlewareFunctions.indexOf(middleware) !== -1) return
+  public use(
+    middleware: (a: T, b?: U, c?: V) => T | undefined
+  ): MiddlewareSystem<T, U, V> {
+    if (this._middlewareFunctions.indexOf(middleware) !== -1) {
+      return this
+    }
+
     this._middlewareFunctions.push(middleware)
     return this
   }
@@ -23,9 +29,14 @@ export class MiddlewareSystem<T, U = undefined, V = undefined> {
    *
    * @param middleware The middleware function to remove
    */
-  unuse(middleware: (a: T, b?: U, c?: V) => T | undefined) {
+  public unuse(
+    middleware: (a: T, b?: U, c?: V) => T | undefined
+  ): MiddlewareSystem<T, U, V> {
     const idx = this._middlewareFunctions.indexOf(middleware)
-    if (idx !== -1) this._middlewareFunctions.splice(idx, 1)
+    if (idx !== -1) {
+      this._middlewareFunctions.splice(idx, 1)
+    }
+
     return this
   }
 
@@ -35,12 +46,23 @@ export class MiddlewareSystem<T, U = undefined, V = undefined> {
    * @param b Optional extra argument passed to each middleware function
    * @param c Optional extra argument passed to each middleware function
    */
-  async process(a: T, b?: U, c?: V) {
+  public async process(a: T, b?: U, c?: V): Promise<T | undefined> {
+    // tslint:disable-next-line: no-let
     let val: T | undefined = a
 
-    for (let i = 0; i < this._middlewareFunctions.length; i++) {
-      if (!val) return
-      val = await this._middlewareFunctions[i](val, b, c)
+    for (const fn of this._middlewareFunctions) {
+      if (!val) {
+        return
+      }
+
+      val = await fn(val, b, c)
+    }
+
+    for (const fn of this._middlewareFunctions) {
+      if (!val) {
+        return
+      }
+      val = await fn(val, b, c)
     }
 
     return val

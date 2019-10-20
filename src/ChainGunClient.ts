@@ -1,12 +1,13 @@
+import { diffGunCRDT } from '@chaingun/crdt'
+import { GunMsgCb } from '@chaingun/types'
 import { ChainGunLink } from './ChainGunLink'
-import { diffGunCRDT } from './Graph/GunGraphUtils'
 import { GunGraph } from './Graph/GunGraph'
 import { WebSocketGraphConnector } from './Transports/WebSocketGraphConnector'
 
 interface ChainGunOptions {
-  peers?: string[]
-  graph?: GunGraph
-  WS?: typeof WebSocket
+  readonly peers?: readonly string[]
+  readonly graph?: GunGraph
+  readonly WS?: typeof WebSocket
 }
 
 /**
@@ -14,13 +15,14 @@ interface ChainGunOptions {
  *
  * Usage:
  *
- *   const gun = new ChainGun({ peers: ["https://notabug.io/gun"]})
+ *   const gun = new ChainGunClient({ peers: ["https://notabug.io/gun"]})
  *   gun.get("nab/things/59382d2a08b7d7073415b5b6ae29dfe617690d74").on(thing => console.log(this))
  */
-export class ChainGun {
-  graph: GunGraph
-  private LinkClass: typeof ChainGunLink
-  private _opt: ChainGunOptions
+export class ChainGunClient {
+  public readonly graph: GunGraph
+  // tslint:disable-next-line: variable-name readonly-keyword
+  protected _opt: ChainGunOptions
+  protected readonly LinkClass: typeof ChainGunLink
 
   constructor(opt?: ChainGunOptions, LinkClass = ChainGunLink) {
     if (opt && opt.graph) {
@@ -31,7 +33,9 @@ export class ChainGun {
       this.graph.use(diffGunCRDT, 'write')
     }
     this._opt = {}
-    if (opt) this.opt(opt)
+    if (opt) {
+      this.opt(opt)
+    }
 
     this.LinkClass = LinkClass
   }
@@ -41,7 +45,7 @@ export class ChainGun {
    *
    * @param options
    */
-  opt(options: ChainGunOptions) {
+  public opt(options: ChainGunOptions): ChainGunClient {
     this._opt = { ...this._opt, ...options }
 
     if (options.peers) {
@@ -63,7 +67,8 @@ export class ChainGun {
    * @param cb
    * @returns New chain context corresponding to given key
    */
-  get(soul: string, cb?: GunMsgCb): ChainGunLink {
+  // tslint:disable-next-line: variable-name
+  public get(soul: string, _cb?: GunMsgCb): ChainGunLink {
     return new this.LinkClass(this, soul)
   }
 }

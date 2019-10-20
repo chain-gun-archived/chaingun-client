@@ -1,19 +1,24 @@
+import { ChainGunGet, ChainGunPut, GunGraphData, GunMsg } from '@chaingun/types'
 import { GunEvent } from '../ControlFlow/GunEvent'
 import { GunProcessQueue } from '../ControlFlow/GunProcessQueue'
 import { GunGraph } from '../Graph/GunGraph'
 
 export abstract class GunGraphConnector {
-  name: string
-  isConnected: boolean
+  public readonly name: string
+  public readonly isConnected: boolean
 
-  events: {
-    graphData: GunEvent<GunGraphData, string | undefined, string | undefined>
-    receiveMessage: GunEvent<GunMsg>
-    connection: GunEvent<boolean>
+  public readonly events: {
+    readonly graphData: GunEvent<
+      GunGraphData,
+      string | undefined,
+      string | undefined
+    >
+    readonly receiveMessage: GunEvent<GunMsg>
+    readonly connection: GunEvent<boolean>
   }
 
-  protected inputQueue: GunProcessQueue<GunMsg>
-  protected outputQueue: GunProcessQueue<GunMsg>
+  protected readonly inputQueue: GunProcessQueue<GunMsg>
+  protected readonly outputQueue: GunProcessQueue<GunMsg>
 
   constructor(name = 'GunGraphConnector') {
     this.isConnected = false
@@ -26,39 +31,45 @@ export abstract class GunGraphConnector {
     this.outputQueue = new GunProcessQueue<GunMsg>(`${name}.outputQueue`)
 
     this.events = {
+      connection: new GunEvent(`${name}.events.connection`),
       graphData: new GunEvent<GunGraphData>(`${name}.events.graphData`),
-      receiveMessage: new GunEvent<GunMsg>(`${name}.events.receiveMessage`),
-      connection: new GunEvent(`${name}.events.connection`)
+      receiveMessage: new GunEvent<GunMsg>(`${name}.events.receiveMessage`)
     }
 
     this.__onConnectedChange = this.__onConnectedChange.bind(this)
     this.events.connection.on(this.__onConnectedChange)
   }
 
-  connectToGraph(graph: GunGraph) {
+  public connectToGraph(graph: GunGraph): GunGraphConnector {
     graph.events.off.on(this.off)
     return this
   }
 
-  off(msgId: string) {
+  public off(_msgId: string): GunGraphConnector {
     return this
   }
 
-  sendPutsFromGraph(graph: GunGraph) {
+  public sendPutsFromGraph(graph: GunGraph): GunGraphConnector {
     graph.events.put.on(this.put)
+    return this
   }
 
-  sendRequestsFromGraph(graph: GunGraph) {
+  public sendRequestsFromGraph(graph: GunGraph): GunGraphConnector {
     graph.events.get.on(req => {
       this.get(req)
     })
+    return this
   }
 
-  waitForConnection() {
-    if (this.isConnected) return Promise.resolve()
+  public waitForConnection(): Promise<void> {
+    if (this.isConnected) {
+      return Promise.resolve()
+    }
     return new Promise(ok => {
       const onConnected = (connected?: boolean) => {
-        if (!connected) return
+        if (!connected) {
+          return
+        }
         ok()
         this.events.connection.off(onConnected)
       }
@@ -71,7 +82,8 @@ export abstract class GunGraphConnector {
    *
    * @returns A function to be called to clean up callback listeners
    */
-  put({ graph, msgId = '', replyTo = '', cb }: ChainGunPut) {
+  public put(_params: ChainGunPut): () => void {
+    // tslint:disable-next-line: no-empty
     return () => {}
   }
 
@@ -80,12 +92,8 @@ export abstract class GunGraphConnector {
    *
    * @returns A function to be called to clean up callback listeners
    */
-  get({
-    soul,
-    cb,
-    msgId = '',
-    key = '' // TODO
-  }: ChainGunGet) {
+  public get(_params: ChainGunGet): () => void {
+    // tslint:disable-next-line: no-empty
     return () => {}
   }
 
@@ -94,9 +102,13 @@ export abstract class GunGraphConnector {
    *
    * @param msgs The Gun wire protocol messages to enqueue
    */
-  send(msgs: GunMsg[]) {
+  public send(msgs: readonly GunMsg[]): GunGraphConnector {
     this.outputQueue.enqueueMany(msgs)
-    if (this.isConnected) this.outputQueue.process()
+    if (this.isConnected) {
+      this.outputQueue.process()
+    }
+
+    return this
   }
 
   /**
@@ -104,15 +116,19 @@ export abstract class GunGraphConnector {
    *
    * @param msgs
    */
-  ingest(msgs: GunMsg[]) {
+  public ingest(msgs: readonly GunMsg[]): GunGraphConnector {
     this.inputQueue.enqueueMany(msgs).process()
+
+    return this
   }
 
-  private __onConnectedChange(connected?: boolean) {
+  private __onConnectedChange(connected?: boolean): void {
     if (connected) {
+      // @ts-ignore
       this.isConnected = true
       this.outputQueue.process()
     } else {
+      // @ts-ignore
       this.isConnected = false
     }
   }

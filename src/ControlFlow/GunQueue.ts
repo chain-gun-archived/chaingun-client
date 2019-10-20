@@ -1,5 +1,8 @@
+import { GunMsg } from '@chaingun/types'
+
 export class GunQueue<T = GunMsg> {
-  name: string
+  public readonly name: string
+  // tslint:disable-next-line: readonly-keyword readonly-array
   private _queue: T[]
 
   constructor(name = 'GunQueue') {
@@ -7,21 +10,24 @@ export class GunQueue<T = GunMsg> {
     this._queue = []
   }
 
-  count() {
+  public count(): number {
     return this._queue.length
   }
 
-  enqueue(item: T) {
-    if (this._queue.indexOf(item) !== -1) return this
+  public enqueue(item: T): GunQueue<T> {
+    if (this._queue.indexOf(item) !== -1) {
+      return this
+    }
+
     this._queue.splice(0, 0, item)
     return this
   }
 
-  dequeue() {
+  public dequeue(): T | undefined {
     return this._queue.pop()
   }
 
-  enqueueMany(items: T[]) {
+  public enqueueMany(items: readonly T[]): GunQueue<T> {
     this._queue.splice(0, 0, ...items.slice().reverse())
     return this
   }

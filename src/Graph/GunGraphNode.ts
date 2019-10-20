@@ -1,15 +1,19 @@
-import { GunGraph } from './GunGraph'
+import { GunGraphData, GunMsg, GunNode } from '@chaingun/types'
 import { GunEvent } from '../ControlFlow/GunEvent'
+import { GunNodeListenCb } from '../interfaces'
+import { GunGraph } from './GunGraph'
 
 /**
  * Query state around a single node in the graph
  */
 export class GunGraphNode {
-  soul: string
-  private _data: GunEvent<GunNode | undefined>
-  private _graph: GunGraph
+  public readonly soul: string
+
+  private readonly _data: GunEvent<GunNode | undefined>
+  private readonly _graph: GunGraph
+  // tslint:disable-next-line: readonly-keyword
   private _endCurQuery?: () => void
-  private _updateGraph: (data: GunGraphData, replyToId?: string) => void
+  private readonly _updateGraph: (data: GunGraphData, replyToId?: string) => void
 
   constructor(
     graph: GunGraph,
@@ -23,27 +27,33 @@ export class GunGraphNode {
     this.soul = soul
   }
 
-  listenerCount() {
+  public listenerCount(): number {
     return this._data.listenerCount()
   }
 
-  get(cb?: GunNodeListenCb) {
-    if (cb) this.on(cb)
+  public get(cb?: GunNodeListenCb): GunGraphNode {
+    if (cb) {
+      this.on(cb)
+    }
     this._ask()
     return this
   }
 
-  receive(data: GunNode | undefined) {
+  public receive(data: GunNode | undefined): GunGraphNode {
     this._data.trigger(data, this.soul)
     return this
   }
 
-  on(cb: (data: GunNode | undefined, soul: string) => void) {
+  public on(
+    cb: (data: GunNode | undefined, soul: string) => void
+  ): GunGraphNode {
     this._data.on(cb)
     return this
   }
 
-  off(cb?: (data: GunNode | undefined, soul: string) => void) {
+  public off(
+    cb?: (data: GunNode | undefined, soul: string) => void
+  ): GunGraphNode {
     if (cb) {
       this._data.off(cb)
     } else {
@@ -58,12 +68,16 @@ export class GunGraphNode {
     return this
   }
 
-  private _ask() {
-    if (this._endCurQuery) return
-    return this._graph.get(this.soul, this._onDirectQueryReply)
+  private _ask(): GunGraphNode {
+    if (this._endCurQuery) {
+      return this
+    }
+
+    this._graph.get(this.soul, this._onDirectQueryReply)
+    return this
   }
 
-  private _onDirectQueryReply(msg: GunMsg) {
+  private _onDirectQueryReply(msg: GunMsg): void {
     if (!msg.put) {
       this._updateGraph(
         {
