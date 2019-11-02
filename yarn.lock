@@ -291,17 +291,17 @@
     typedoc-default-themes "^0.6.0-0"
     typescript "3.5.x"
 
-"@chaingun/crdt@^0.0.1":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@chaingun/crdt/-/crdt-0.0.1.tgz#a94ebed24c93d50fe66526fc36c2c9764dc55691"
-  integrity sha512-L9QejsXu7mDgMRNZxaIC7O3i8DN2w2mj7k2vhYgv0MKq7b3cuCk7bF5J4mBMETnN85r+RRZXI80R+7Aga99Mwg==
+"@chaingun/crdt@^0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@chaingun/crdt/-/crdt-0.0.2.tgz#9d62c703e81c95e3e347c078352284707c0ff1bd"
+  integrity sha512-JggscTfwsubnYamCTFI+rgCLKBrlv3NVBeymPdw0fpjVgCsDf9FFJDzYrsEl7lLUXIAZ+GG0pDki0DW2DsOx6Q==
   dependencies:
-    "@chaingun/types" "^0.0.1"
+    "@chaingun/types" "^0.0.3"
 
-"@chaingun/types@^0.0.1":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@chaingun/types/-/types-0.0.1.tgz#f5ebbdd49a66736ad5db58abac43b5a73ca37540"
-  integrity sha512-oEAyKmtXlDCo1dJoeeSc8JIWpVQ4ZeARumPUqy22Yo7sG0o0y0RRiJ8pi2lrm5sRoRwlM6iTeKS1uRGjrDslJA==
+"@chaingun/types@^0.0.3":
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/@chaingun/types/-/types-0.0.3.tgz#2f0968932c827528b8815ce4b2886661f7d94e06"
+  integrity sha512-0rIMrcK0BGiiIzMhlhNxSiqGwyxWhgbGyUdycp6cmqwQrhFd6cxBVUtGkdWsGULrHUye26TLeKfbGXRvP8TXCQ==
 
 "@concordance/react@^2.0.0":
   version "2.0.0"
