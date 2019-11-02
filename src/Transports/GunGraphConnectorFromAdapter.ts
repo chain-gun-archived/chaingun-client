@@ -21,7 +21,7 @@ export class GunGraphConnectorFromAdapter extends GunGraphWireConnector {
         '@': msgId,
         put: node
           ? {
-              soul: node
+              [soul]: node
             }
           : undefined
       }))
