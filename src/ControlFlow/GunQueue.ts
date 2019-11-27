@@ -14,8 +14,12 @@ export class GunQueue<T = GunMsg> {
     return this._queue.length
   }
 
+  public has(item: T): boolean {
+    return this._queue.indexOf(item) !== -1
+  }
+
   public enqueue(item: T): GunQueue<T> {
-    if (this._queue.indexOf(item) !== -1) {
+    if (this.has(item)) {
       return this
     }
 
@@ -28,7 +32,12 @@ export class GunQueue<T = GunMsg> {
   }
 
   public enqueueMany(items: readonly T[]): GunQueue<T> {
-    this._queue.splice(0, 0, ...items.slice().reverse())
+    const filtered = items.filter(item => !this.has(item))
+
+    if (filtered.length) {
+      this._queue.splice(0, 0, ...filtered.slice().reverse())
+    }
+
     return this
   }
 }
