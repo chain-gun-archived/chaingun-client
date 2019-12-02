@@ -1,7 +1,7 @@
 export class MiddlewareSystem<T, U = undefined, V = undefined> {
   public readonly name: string
   // tslint:disable-next-line: readonly-array readonly-keyword
-  private _middlewareFunctions: Array<(a: T, b?: U, c?: V) => T | undefined>
+  private _middlewareFunctions: Array<(a: T, b?: U, c?: V) => Promise<T> | T | undefined>
 
   constructor(name = 'MiddlewareSystem') {
     this.name = name
