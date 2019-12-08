@@ -1,7 +1,9 @@
 export class MiddlewareSystem<T, U = undefined, V = undefined> {
   public readonly name: string
   // tslint:disable-next-line: readonly-array readonly-keyword
-  private _middlewareFunctions: Array<(a: T, b?: U, c?: V) => Promise<T> | T | undefined>
+  private _middlewareFunctions: Array<
+    (a: T, b?: U, c?: V) => Promise<T> | T | undefined
+  >
 
   constructor(name = 'MiddlewareSystem') {
     this.name = name
@@ -14,7 +16,7 @@ export class MiddlewareSystem<T, U = undefined, V = undefined> {
    * @param middleware The middleware function to add
    */
   public use(
-    middleware: (a: T, b?: U, c?: V) => T | undefined
+    middleware: (a: T, b?: U, c?: V) => Promise<T> | T | undefined
   ): MiddlewareSystem<T, U, V> {
     if (this._middlewareFunctions.indexOf(middleware) !== -1) {
       return this
@@ -55,13 +57,6 @@ export class MiddlewareSystem<T, U = undefined, V = undefined> {
         return
       }
 
-      val = await fn(val, b, c)
-    }
-
-    for (const fn of this._middlewareFunctions) {
-      if (!val) {
-        return
-      }
       val = await fn(val, b, c)
     }
 
